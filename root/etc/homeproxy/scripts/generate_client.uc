@@ -1127,6 +1127,8 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 }
 /* Experimental end */
 
+config.$schema = 'https://sing-box.sagernet.org/schema.json';
+
 system('mkdir -p ' + RUN_DIR);
 const client_tmp = RUN_DIR + '/sing-box-c.json.tmp';
 writefile(client_tmp, sprintf('%.J\n', removeBlankAttrs(config)));
