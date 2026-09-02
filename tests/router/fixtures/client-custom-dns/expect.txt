@@ -1,0 +1,7 @@
+"action": "evaluate"
+"_hp_eval_legacy_ip_rule"
+"match_response": "_hp_eval_legacy_ip_rule"
+"tag": "first"
+"match_response": "first"
+"response_rcode": "NOERROR"
+"race": true
