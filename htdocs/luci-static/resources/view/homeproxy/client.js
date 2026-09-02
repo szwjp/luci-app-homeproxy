@@ -303,6 +303,47 @@ return view.extend({
 		o.depends('routing_mode', 'bypass_mainland_china');
 		o.rmempty = false;
 
+		o = s.taboption('routing', form.ListValue, 'tun_dns_mode', _('TUN DNS mode (1.14)'),
+			_('Leave empty to keep current behavior. hijack/native lets sing-box manage platform DNS; may overlap dnsmasq DNS hijack.'));
+		o.value('', _('Unset (default)'));
+		o.value('disabled', _('Disabled'));
+		o.value('native', _('Native'));
+		o.value('hijack', _('Hijack'));
+		o.depends('proxy_mode', 'redirect_tun');
+		o.depends('proxy_mode', 'tun');
+		o.rmempty = false;
+
+		o = s.taboption('routing', form.DynamicList, 'tun_dns_address', _('TUN DNS addresses (1.14)'));
+		o.datatype = 'ipaddr';
+		o.depends({'proxy_mode': /^((?!custom).)+$/, 'tun_dns_mode': /[\s\S]/});
+		o.modalonly = true;
+
+		o = s.taboption('routing', form.ListValue, 'udp_mapping', _('UDP NAT mapping (1.14)'));
+		o.value('', _('Default'));
+		o.value('endpoint_independent', _('Endpoint independent'));
+		o.value('address_dependent', _('Address dependent'));
+		o.value('address_and_port_dependent', _('Address and port dependent'));
+		o.depends('proxy_mode', 'redirect_tproxy');
+		o.depends('proxy_mode', 'redirect_tun');
+		o.depends('proxy_mode', 'tun');
+		o.rmempty = false;
+
+		o = s.taboption('routing', form.ListValue, 'udp_filtering', _('UDP NAT filtering (1.14)'));
+		o.value('', _('Default'));
+		o.value('endpoint_independent', _('Endpoint independent'));
+		o.value('address_dependent', _('Address dependent'));
+		o.value('address_and_port_dependent', _('Address and port dependent'));
+		o.depends('proxy_mode', 'redirect_tproxy');
+		o.depends('proxy_mode', 'redirect_tun');
+		o.depends('proxy_mode', 'tun');
+		o.rmempty = false;
+
+		o = s.taboption('routing', form.Value, 'udp_nat_max', _('UDP NAT sessions max (1.14)'));
+		o.datatype = 'uinteger';
+		o.depends('proxy_mode', 'redirect_tproxy');
+		o.depends('proxy_mode', 'redirect_tun');
+		o.depends('proxy_mode', 'tun');
+
 		/* Custom routing settings start */
 		/* Routing settings start */
 		o = s.taboption('routing', form.SectionValue, '_routing', form.NamedSection, 'routing', 'homeproxy');
@@ -347,6 +388,10 @@ return view.extend({
 
 		so = ss.option(form.Flag, 'bypass_cn_traffic', _('Bypass CN traffic'),
 			_('Bypass mainland China traffic via firewall rules by default.'));
+		so.rmempty = false;
+
+		so = ss.option(form.Flag, 'find_neighbor', _('Find neighbor hosts'),
+			_('Enable neighbor resolution so rules can match LAN devices by hostname (1.14).'));
 		so.rmempty = false;
 
 		so = ss.option(form.ListValue, 'domain_strategy', _('Domain strategy'),
@@ -833,6 +878,15 @@ return view.extend({
 		so.modalonly = true;
 
 		so = ss.taboption('field_host', form.Flag, 'ip_is_private', _('Match private IP'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'source_mac_address', _('Source MAC address'),
+			_('Match LAN device by MAC address.'));
+		so.datatype = 'macaddr';
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'source_hostname', _('Source hostname'),
+			_('Match LAN device hostname via neighbor resolution; enable find_neighbor.'));
 		so.modalonly = true;
 
 		so = ss.taboption('field_port', form.DynamicList, 'source_port', _('Source port'),
@@ -1329,6 +1383,15 @@ return view.extend({
 
 		so = ss.taboption('field_host', form.Flag, 'ip_is_private', _('Match private IP'),
 			_('Match private IP with the evaluated response (needs match_response).'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'source_mac_address', _('Source MAC address'),
+			_('Match LAN device by MAC address.'));
+		so.datatype = 'macaddr';
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.DynamicList, 'source_hostname', _('Source hostname'),
+			_('Match LAN device hostname via neighbor resolution; enable find_neighbor.'));
 		so.modalonly = true;
 
 		so = ss.taboption('field_host', form.Value, 'query_client_subnet', _('Query EDNS client subnet'),
