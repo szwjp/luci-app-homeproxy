@@ -278,7 +278,7 @@ config homeproxy 'infra'
 	option tun_mark '102'
 
 config homeproxy 'config'
-	option main_node 'nil'
+	option main_node 'node-test'
 	option main_udp_node 'same'
 	option dns_server '8.8.8.8'
 	option china_dns_server '223.5.5.5'
@@ -287,6 +287,11 @@ config homeproxy 'config'
 	option proxy_mode 'redirect_tproxy'
 	option ipv6_support '0'
 	option log_level 'warn'
+
+config node 'node-test'
+	option label 'test-direct'
+	option enabled '1'
+	option type 'direct'
 ```
 
 `expect.txt`（只校验关键结构存在，避免锁定无关细节）：
@@ -305,7 +310,7 @@ config homeproxy 'server'
 	option enabled '1'
 	option log_level 'warn'
 
-config homeproxy 'server'
+config server 'test-ss'
 	option label 'test-ss'
 	option enabled '1'
 	option type 'shadowsocks'
