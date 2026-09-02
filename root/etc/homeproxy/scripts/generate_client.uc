@@ -1083,9 +1083,7 @@ for (let rs in (config.route.rule_set || [])) {
 		http_seen[detour] = true;
 		push(http_clients, {
 			tag: tag,
-			dial: {
-				detour: detour
-			}
+			detour: detour
 		});
 	}
 }
