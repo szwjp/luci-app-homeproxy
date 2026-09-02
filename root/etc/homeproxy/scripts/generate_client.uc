@@ -1041,17 +1041,56 @@ if (!isEmpty(main_node)) {
 		if (cfg.enabled !== '1')
 			return null;
 
-		push(config.route.rule_set, {
+		const extra_tags = cfg.extra_tags || [];
+		let rs_tag = 'cfg-' + cfg['.name'] + '-rule';
+		if (length(extra_tags) && cfg.type !== 'inline') {
+			rs_tag = [rs_tag];
+			for (let t in extra_tags)
+				push(rs_tag, 'cfg-' + t + '-rule');
+		}
+
+		const ruleset = {
 			type: cfg.type,
-			tag: 'cfg-' + cfg['.name'] + '-rule',
+			tag: rs_tag,
 			format: cfg.format,
 			path: cfg.path,
 			url: cfg.url,
-			download_detour: get_outbound(cfg.outbound),
+			download_detour: get_outbound(cfg.outbound) || get_outbound(default_outbound),
 			update_interval: cfg.update_interval
-		});
+		};
+		if (cfg.type === 'remote' && !isEmpty(cfg.initial_path))
+			ruleset.initial_path = cfg.initial_path;
+		push(config.route.rule_set, ruleset);
 	});
 }
+
+/* sing-box 1.14: remote rule-sets download via top-level http_clients;
+   replaces the legacy download_detour field everywhere (preset + custom). */
+const http_clients = [];
+const http_seen = {};
+for (let rs in (config.route.rule_set || [])) {
+	if (rs.type !== 'remote')
+		continue;
+
+	let detour = rs.download_detour;
+	delete rs.download_detour;
+	if (isEmpty(detour))
+		detour = (routing_mode === 'custom') ? (get_outbound(default_outbound) || 'direct-out') : 'direct-out';
+
+	const tag = 'hp-' + detour;
+	rs.http_client = tag;
+	if (!http_seen[detour]) {
+		http_seen[detour] = true;
+		push(http_clients, {
+			tag: tag,
+			dial: {
+				detour: detour
+			}
+		});
+	}
+}
+if (length(http_clients))
+	config.http_clients = http_clients;
 /* Routing rules end */
 
 /* Experimental start */
