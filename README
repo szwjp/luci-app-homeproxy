@@ -3,8 +3,7 @@
 The modern ImmortalWrt proxy platform for ARM64/AMD64, based on sing-box.
 
 本项目是 [luci-app-homeproxy](https://github.com/szwjp/homeproxy) 的分拆版本线：
-以 sing-box **1.14** 内核为唯一目标，充分结合 1.14 引入的新特性进行升级，
-不再兼容 1.13 及更早内核。
+以 sing-box **1.14** 内核为唯一目标，充分结合 1.14 引入的新特性进行升级，不再兼容 1.13 及更早内核。
 
 ## 与原项目的关系
 
@@ -17,7 +16,7 @@ The modern ImmortalWrt proxy platform for ARM64/AMD64, based on sing-box.
 `/usr/share/rpcd` 等安装路径保持一致；区分体现在独立版本线（`PKG_VERSION=1.14.0`）
 与 LuCI 标题标识（sing-box 1.14）。
 
-## 目标特性（围绕 sing-box 1.14）
+## 项目改造特性（围绕 sing-box 1.14）
 
 - DNS：`evaluate` / `match_response` 响应匹配、乐观 DNS 缓存（`optimistic` / `store_dns`）、统一 `timeout`
 - 规则集：`initial_path` 预置、多 tag 规则集、`http_clients` 统一 HTTP 客户端（替代 `download_detour`）
@@ -42,17 +41,6 @@ The modern ImmortalWrt proxy platform for ARM64/AMD64, based on sing-box.
 - ImmortalWrt / OpenWrt 24.10+（apk 或 opkg 均可安装）
 - sing-box >= 1.14.0（ImmortalWrt 25.12 源对应 sing-box 1.14.0-r1）
 - 低于 1.14 时服务会拒绝启动并记录明确日志
-
-## 构建
-
-克隆本项目后放入 OpenWrt/ImmortalWrt SDK 的 `package/` 目录，执行：
-
-```sh
-make package/luci-app-homeproxy/compile
-```
-
-CI（`.github/workflows/build.yml`）在推送 `main` 分支时自动构建 apk/ipk 并发布到
-固定 tag `luci-app-homeproxy`（覆盖式更新）。
 
 ## 许可证
 
