@@ -186,7 +186,7 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 if (length(config.inbounds) === 0)
 	exit(1);
 
-config.$schema = 'https://sing-box.sagernet.org/schema.json';
+config['$schema'] = 'https://sing-box.sagernet.org/schema.json';
 
 system('mkdir -p ' + RUN_DIR);
 const server_tmp = RUN_DIR + '/sing-box-s.json.tmp';
