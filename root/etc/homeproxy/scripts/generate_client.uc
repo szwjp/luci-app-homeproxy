@@ -136,6 +136,12 @@ if (match(proxy_mode, /tun/)) {
 const log_level = uci.get(uciconfig, ucimain, 'log_level') || 'warn';
 /* UCI config end */
 
+const tun_dns_mode = uci.get(uciconfig, ucimain, 'tun_dns_mode'),
+      tun_dns_address = uci.get(uciconfig, ucimain, 'tun_dns_address'),
+      udp_mapping = uci.get(uciconfig, ucimain, 'udp_mapping'),
+      udp_filtering = uci.get(uciconfig, ucimain, 'udp_filtering'),
+      udp_nat_max = strToInt(uci.get(uciconfig, ucimain, 'udp_nat_max'));
+
 /* Config helper start */
 function parse_port(strport) {
 	if (type(strport) !== 'array' || isEmpty(strport))
@@ -204,7 +210,10 @@ function generate_endpoint(node) {
 		system: (node.type === 'wireguard') ? false : null,
 		tcp_fast_open: strToBool(node.tcp_fast_open),
 		tcp_multi_path: strToBool(node.tcp_multi_path),
-		udp_fragment: strToBool(node.udp_fragment)
+		udp_fragment: strToBool(node.udp_fragment),
+		udp_mapping: !isEmpty(udp_mapping) ? udp_mapping : null,
+		udp_filtering: !isEmpty(udp_filtering) ? udp_filtering : null,
+		udp_nat_max: udp_nat_max
 	};
 
 	return endpoint;
@@ -625,6 +634,8 @@ if (!isEmpty(main_node)) {
 		rule.response_answer = cfg.response_answer;
 		rule.response_ns = cfg.response_ns;
 		rule.response_extra = cfg.response_extra;
+		rule.source_mac_address = cfg.source_mac_address;
+		rule.source_hostname = cfg.source_hostname;
 
 		const legacy_filter = !isEmpty(cfg.ip_cidr) || strToBool(cfg.ip_is_private) === true;
 		if (legacy_filter && !rule.match_response && cfg.action === 'route') {
@@ -687,6 +698,9 @@ if (match(proxy_mode, /tproxy/))
 		listen_port: int(tproxy_port),
 		network: 'udp',
 		udp_timeout: strToTime(udp_timeout),
+		udp_mapping: !isEmpty(udp_mapping) ? udp_mapping : null,
+		udp_filtering: !isEmpty(udp_filtering) ? udp_filtering : null,
+		udp_nat_max: udp_nat_max,
 	});
 if (match(proxy_mode, /tun/))
 	push(config.inbounds, {
@@ -699,6 +713,11 @@ if (match(proxy_mode, /tun/))
 		auto_route: false,
 		endpoint_independent_nat: strToBool(endpoint_independent_nat),
 		udp_timeout: strToTime(udp_timeout),
+		dns_mode: !isEmpty(tun_dns_mode) ? tun_dns_mode : null,
+		dns_address: !isEmpty(tun_dns_address) ? tun_dns_address : null,
+		udp_mapping: !isEmpty(udp_mapping) ? udp_mapping : null,
+		udp_filtering: !isEmpty(udp_filtering) ? udp_filtering : null,
+		udp_nat_max: udp_nat_max,
 		stack: tcpip_stack,
 	});
 /* Inbound end */
@@ -969,6 +988,9 @@ if (!isEmpty(main_node)) {
 		server: get_resolver(default_outbound_dns)
 	};
 
+	if (uci.get(uciconfig, uciroutingsetting, 'find_neighbor') === '1')
+		config.route.find_neighbor = true;
+
 	if (domain_strategy)
 		push(config.route.rules, {
 			action: 'resolve',
@@ -1020,7 +1042,9 @@ if (!isEmpty(main_node)) {
 			udp_timeout: strToTime(cfg.udp_timeout),
 			tls_fragment: strToBool(cfg.tls_fragment),
 			tls_fragment_fallback_delay: strToTime(cfg.tls_fragment_fallback_delay),
-			tls_record_fragment: strToBool(cfg.tls_record_fragment)
+			tls_record_fragment: strToBool(cfg.tls_record_fragment),
+			source_mac_address: cfg.source_mac_address,
+			source_hostname: cfg.source_hostname
 		});
 	});
 
