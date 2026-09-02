@@ -1032,4 +1032,10 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 /* Experimental end */
 
 system('mkdir -p ' + RUN_DIR);
-writefile(RUN_DIR + '/sing-box-c.json', sprintf('%.J\n', removeBlankAttrs(config)));
+const client_tmp = RUN_DIR + '/sing-box-c.json.tmp';
+writefile(client_tmp, sprintf('%.J\n', removeBlankAttrs(config)));
+if (system('/usr/bin/sing-box check --config ' + client_tmp) !== 0) {
+	system('rm -f ' + client_tmp);
+	exit(1);
+}
+system('mv -f ' + client_tmp + ' ' + RUN_DIR + '/sing-box-c.json');
