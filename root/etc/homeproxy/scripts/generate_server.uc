@@ -122,13 +122,17 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 			cipher_suites: cfg.tls_cipher_suites,
 			certificate_path: cfg.tls_cert_path,
 			key_path: cfg.tls_key_path,
-			acme: (cfg.tls_acme === '1') ? {
+			certificate_provider: (cfg.tls_acme === '1') ? {
+				type: 'acme',
 				domain: (type(cfg.tls_acme_domain) === 'array') ? cfg.tls_acme_domain
 					: (isEmpty(cfg.tls_acme_domain) ? [] : [cfg.tls_acme_domain]),
 				data_directory: HP_DIR + '/certs',
 				default_server_name: cfg.tls_acme_dsn,
 				email: cfg.tls_acme_email,
 				provider: cfg.tls_acme_provider,
+				account_key: cfg.tls_acme_account_key,
+				key_type: cfg.tls_acme_key_type,
+				profile: cfg.tls_acme_profile,
 				disable_http_challenge: strToBool(cfg.tls_acme_dhc),
 				disable_tls_alpn_challenge: strToBool(cfg.tls_acme_dtac),
 				alternative_http_port: strToInt(cfg.tls_acme_ahp),
@@ -181,6 +185,8 @@ uci.foreach(uciconfig, uciserver, (cfg) => {
 
 if (length(config.inbounds) === 0)
 	exit(1);
+
+config.$schema = 'https://sing-box.sagernet.org/schema.json';
 
 system('mkdir -p ' + RUN_DIR);
 const server_tmp = RUN_DIR + '/sing-box-s.json.tmp';

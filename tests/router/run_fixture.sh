@@ -52,10 +52,16 @@ fi
 EXPECT="$FIXROOT/fixtures/$FIXTURE/expect.txt"
 while IFS= read -r pat; do
 	[ -z "$pat" ] && continue
-	if ! grep -qF "$pat" "$JSON"; then
-		echo "FAIL($FIXTURE): missing expected string: $pat"
-		exit 1
-	fi
+	case "$pat" in
+		\!*) if grep -qF "${pat#!}" "$JSON"; then
+			echo "FAIL($FIXTURE): unexpected string: ${pat#!}"
+			exit 1
+		fi ;;
+		*) if ! grep -qF "$pat" "$JSON"; then
+			echo "FAIL($FIXTURE): missing expected string: $pat"
+			exit 1
+		fi ;;
+	esac
 done < "$EXPECT"
 
 echo "PASS($FIXTURE)"
