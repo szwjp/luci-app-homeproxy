@@ -25,8 +25,17 @@ The modern ImmortalWrt proxy platform for ARM64/AMD64, based on sing-box.
 - 证书：`tls.acme` → `certificate_provider` 迁移（旧字段 1.16 移除）
 - 工程：JSON Schema（`$schema`）辅助配置校验与排错
 
-> 当前代码为分拆基线（源自 27.820.3），上述特性将随开发逐步落地，未完成前不在
-> LuCI 界面与生成脚本中暴露 1.14 专属行为，保证任意时刻可构建、可运行。
+> 1.14 特性已按批次落地并经测试机验证；未列入的目标（见
+> docs/superpowers/specs/2026-09-02-homeproxy1.14-singbox-1.14-features-design.md）
+> 不在 LuCI 界面与生成脚本中暴露。
+
+## 已融入的 sing-box 1.14 特性
+
+- DNS：evaluate/match_response/race 响应匹配、乐观缓存与 store_dns、统一 dns.timeout
+- 规则集：initial_path、多 tag、http_clients 下载客户端
+- 连接：TUN dns_mode/dns_address、UDP NAT 参数（udp_mapping/udp_filtering/udp_nat_max）
+- 证书：tls.acme → certificate_provider（key_type/profile/account_key）
+- 工程化：生成配置内置 $schema；运行要求 sing-box >= 1.14
 
 ## 运行要求
 
