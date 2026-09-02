@@ -56,9 +56,8 @@ const ipv6_support = uci.get(uciconfig, ucimain, 'ipv6_support') || '0';
 
 let main_node, main_udp_node, dedicated_udp_node, default_outbound, default_outbound_dns,
     domain_strategy, dns_server, china_dns_server, dns_default_strategy,
-    dns_default_server, dns_disable_cache, dns_disable_cache_expire, dns_independent_cache,
-    dns_client_subnet, cache_file_store_rdrc, cache_file_rdrc_timeout, direct_domain_list,
-    proxy_domain_list;
+    dns_default_server, dns_disable_cache, dns_disable_cache_expire,
+    dns_client_subnet, direct_domain_list, proxy_domain_list;
 
 if (routing_mode !== 'custom') {
 	main_node = uci.get(uciconfig, ucimain, 'main_node') || 'nil';
@@ -88,16 +87,18 @@ if (routing_mode !== 'custom') {
 	dns_default_server = uci.get(uciconfig, ucidnssetting, 'default_server');
 	dns_disable_cache = uci.get(uciconfig, ucidnssetting, 'disable_cache');
 	dns_disable_cache_expire = uci.get(uciconfig, ucidnssetting, 'disable_cache_expire');
-	dns_independent_cache = uci.get(uciconfig, ucidnssetting, 'independent_cache');
 	dns_client_subnet = uci.get(uciconfig, ucidnssetting, 'client_subnet');
-	cache_file_store_rdrc = uci.get(uciconfig, ucidnssetting, 'cache_file_store_rdrc'),
-	cache_file_rdrc_timeout = uci.get(uciconfig, ucidnssetting, 'cache_file_rdrc_timeout');
 
 	/* Routing settings */
 	default_outbound = uci.get(uciconfig, uciroutingsetting, 'default_outbound') || 'nil';
 	default_outbound_dns = uci.get(uciconfig, uciroutingsetting, 'default_outbound_dns') || 'default-dns';
 	domain_strategy = uci.get(uciconfig, uciroutingsetting, 'domain_strategy');
 }
+
+const dns_optimistic_cache = uci.get(uciconfig, ucidnssetting, 'optimistic_cache') || '0',
+      dns_optimistic_timeout = uci.get(uciconfig, ucidnssetting, 'optimistic_timeout'),
+      dns_query_timeout = uci.get(uciconfig, ucidnssetting, 'dns_timeout'),
+      dns_store_dns = uci.get(uciconfig, ucidnssetting, 'cache_file_store_dns') || '0';
 
 const proxy_mode = uci.get(uciconfig, ucimain, 'proxy_mode') || 'redirect_tproxy',
       default_interface = uci.get(uciconfig, ucicontrol, 'bind_interface');
@@ -451,8 +452,12 @@ config.dns = {
 	strategy: dns_default_strategy,
 	disable_cache: strToBool(dns_disable_cache),
 	disable_expire: strToBool(dns_disable_cache_expire),
-	independent_cache: strToBool(dns_independent_cache),
-	client_subnet: dns_client_subnet
+	client_subnet: dns_client_subnet,
+	optimistic: (dns_optimistic_cache === '1') ? {
+		enabled: true,
+		timeout: !isEmpty(dns_optimistic_timeout) ? dns_optimistic_timeout : '3d'
+	} : null,
+	timeout: !isEmpty(dns_query_timeout) ? strToTime(dns_query_timeout) : null
 };
 
 if (!isEmpty(main_node)) {
@@ -510,16 +515,26 @@ if (!isEmpty(main_node)) {
 				server: 'main-dns'
 			});
 
-		/* sing-box 1.14 rejects DNS rules that reference IP-class rule-sets
-		   (geoip-cn) without match_response, and rejects the legacy strategy
-		   action option when the DNS config contains query_type rules (as
-		   above). The DNS-stage geoip fallback is therefore not emitted;
-		   route-stage geoip-cn matching (CN IP -> direct) is unaffected. */
 		push(config.dns.rules, {
 			rule_set: 'geosite-cn',
 			action: 'route',
 			server: 'china-dns'
 		});
+
+		/* sing-box 1.14: restore CN-IP fallback via evaluate/match_response (opt-in) */
+		if (uci.get(uciconfig, ucimain, 'cn_ip_fallback') === '1') {
+			push(config.dns.rules, {
+				action: 'evaluate',
+				server: 'main-dns',
+				tag: 'cn-fallback'
+			});
+			push(config.dns.rules, {
+				match_response: 'cn-fallback',
+				rule_set: 'geoip-cn',
+				action: 'route',
+				server: 'china-dns'
+			});
+		}
 	}
 } else if (!isEmpty(default_outbound)) {
 	/* DNS servers */
@@ -551,24 +566,14 @@ if (!isEmpty(main_node)) {
 	});
 
 	/* DNS rules */
-	/* sing-box 1.14 rejects the legacy DNS fields above (ip_cidr/ip_is_private
-	   without match_response, strategy action option,
-	   rule_set_ip_cidr_accept_empty) when the same DNS config contains
-	   ip_version/query_type in any rule; drop them only in that case */
-	let dns_rule_has_ver_qtype = false;
-	uci.foreach(uciconfig, ucidnsrule, (cfg) => {
-		if (cfg.enabled !== '1')
-			return null;
-		if (strToInt(cfg.ip_version) || !isEmpty(parse_dnsquery(cfg.query_type)))
-			dns_rule_has_ver_qtype = true;
-	});
-	const drop_legacy_dns_fields = dns_rule_has_ver_qtype;
-
+	/* sing-box >= 1.14: legacy address-filter rules are auto-wrapped with an
+	   evaluate action; deprecated strategy/accept_empty fields are dropped. */
+	const builtin_dns_rules = [];
 	uci.foreach(uciconfig, ucidnsrule, (cfg) => {
 		if (cfg.enabled !== '1')
 			return;
 
-		push(config.dns.rules, {
+		const rule = {
 			ip_version: strToInt(cfg.ip_version),
 			query_type: parse_dnsquery(cfg.query_type),
 			network: cfg.network,
@@ -581,8 +586,6 @@ if (!isEmpty(main_node)) {
 			port_range: cfg.port_range,
 			source_ip_cidr: cfg.source_ip_cidr,
 			source_ip_is_private: strToBool(cfg.source_ip_is_private),
-			ip_cidr: drop_legacy_dns_fields ? null : cfg.ip_cidr,
-			ip_is_private: drop_legacy_dns_fields ? null : strToBool(cfg.ip_is_private),
 			source_port: parse_port(cfg.source_port),
 			source_port_range: cfg.source_port_range,
 			process_name: cfg.process_name,
@@ -591,25 +594,58 @@ if (!isEmpty(main_node)) {
 			user: cfg.user,
 			rule_set: get_ruleset(cfg.rule_set),
 			rule_set_ip_cidr_match_source: strToBool(cfg.rule_set_ip_cidr_match_source),
-			rule_set_ip_cidr_accept_empty: drop_legacy_dns_fields ? null : strToBool(cfg.rule_set_ip_cidr_accept_empty),
 			invert: strToBool(cfg.invert),
+			race: strToBool(cfg.race),
+			speculative: strToBool(cfg.speculative),
 			action: cfg.action,
 			server: get_resolver(cfg.server),
-			strategy: drop_legacy_dns_fields ? null : cfg.domain_strategy,
 			disable_cache: strToBool(cfg.dns_disable_cache),
+			disable_optimistic_cache: strToBool(cfg.disable_optimistic_cache),
 			rewrite_ttl: strToInt(cfg.rewrite_ttl),
+			timeout: strToTime(cfg.dns_timeout),
 			client_subnet: cfg.client_subnet,
+			remove_client_subnet: strToBool(cfg.remove_client_subnet),
 			method: cfg.reject_method,
 			no_drop: strToBool(cfg.reject_no_drop),
 			rcode: cfg.predefined_rcode,
 			answer: cfg.predefined_answer,
 			ns: cfg.predefined_ns,
 			extra: cfg.predefined_extra
-		});
-	});
+		};
 
-	if (isEmpty(config.dns.rules))
-		config.dns.rules = null;
+		if (cfg.action === 'evaluate')
+			rule.tag = cfg.evaluate_tag || null;
+
+		if (cfg.match_response && cfg.match_response !== '0')
+			rule.match_response = (cfg.match_response === '1') ? true : cfg.match_response;
+
+		rule.query_client_subnet = cfg.query_client_subnet;
+		rule.query_dnssec = strToBool(cfg.query_dnssec);
+		rule.response_rcode = cfg.response_rcode;
+		rule.response_answer = cfg.response_answer;
+		rule.response_ns = cfg.response_ns;
+		rule.response_extra = cfg.response_extra;
+
+		const legacy_filter = !isEmpty(cfg.ip_cidr) || strToBool(cfg.ip_is_private) === true;
+		if (legacy_filter && !rule.match_response && cfg.action === 'route') {
+			const eval_tag = '_hp_eval_' + cfg['.name'];
+			push(builtin_dns_rules, {
+				action: 'evaluate',
+				server: get_resolver(cfg.server),
+				tag: eval_tag
+			});
+			rule.match_response = eval_tag;
+		}
+
+		/* ip_cidr / ip_is_private are only valid with match_response in 1.14 */
+		if (rule.match_response) {
+			rule.ip_cidr = cfg.ip_cidr;
+			rule.ip_is_private = strToBool(cfg.ip_is_private);
+		}
+
+		push(builtin_dns_rules, rule);
+	});
+	config.dns.rules = builtin_dns_rules;
 
 	config.dns.final = get_resolver(dns_default_server);
 }
@@ -1024,8 +1060,7 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 		cache_file: {
 			enabled: true,
 			path: '/etc/homeproxy/cache.db',
-			store_rdrc: strToBool(cache_file_store_rdrc),
-			rdrc_timeout: strToTime(cache_file_rdrc_timeout),
+			store_dns: strToBool(dns_store_dns)
 		}
 	};
 }
