@@ -1422,6 +1422,9 @@ return view.extend({
 			if (section_id) {
 				if (!value)
 					return _('Expecting: %s').format(_('non-empty value'));
+				let extra = this.section.formvalue(section_id, 'extra_tags') || [];
+				if (extra.length && !value.includes('{tag}'))
+					return _('Expecting: %s').format(_('{tag} in URL when extra tags are used'));
 
 				try {
 					let url = new URL(value);
@@ -1470,6 +1473,9 @@ return view.extend({
 				let rule_url = this.section.formvalue(section_id, 'url') || '';
 				if (!rule_url.includes('{tag}'))
 					return _('Expecting: %s').format(_('{tag} in URL when extra tags are used'));
+				let rule_initial = this.section.formvalue(section_id, 'initial_path') || '';
+				if (rule_initial && !rule_initial.includes('{tag}'))
+					return _('Expecting: %s').format(_('{tag} in initial path when extra tags are used'));
 			}
 			return true;
 		}

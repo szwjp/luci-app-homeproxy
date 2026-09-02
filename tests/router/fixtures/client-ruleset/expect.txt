@@ -1,0 +1,6 @@
+"http_clients": [
+"hp-direct-out"
+"http_client": "hp-direct-out"
+"initial_path": "/etc/homeproxy/ruleset/{tag}.srs"
+"cfg-geo_test-rule"
+"cfg-geo-extra-rule"

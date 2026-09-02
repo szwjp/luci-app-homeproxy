@@ -52,7 +52,7 @@ config ruleset 'geo_test'
 	option type 'remote'
 	option format 'binary'
 	option url 'https://example.com/{tag}.srs'
-	option initial_path '/etc/homeproxy/ruleset/geo-test.srs'
+	option initial_path '/etc/homeproxy/ruleset/{tag}.srs'
 	option outbound 'direct-out'
 	list extra_tags 'geo-extra'
 ```
@@ -63,7 +63,7 @@ Create `tests/router/fixtures/client-ruleset/expect.txt`：
 "http_clients": [
 "hp-direct-out"
 "http_client": "hp-direct-out"
-"initial_path": "/etc/homeproxy/ruleset/geo-test.srs"
+"initial_path": "/etc/homeproxy/ruleset/{tag}.srs"
 "cfg-geo_test-rule"
 "cfg-geo-extra-rule"
 ```

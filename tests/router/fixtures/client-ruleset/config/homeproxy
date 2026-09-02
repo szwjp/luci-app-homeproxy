@@ -1,0 +1,22 @@
+config homeproxy 'config'
+	option routing_mode 'custom'
+	option proxy_mode 'redirect_tproxy'
+	option ipv6_support '0'
+	option log_level 'warn'
+
+config homeproxy 'routing'
+	option default_outbound 'direct-out'
+	option default_outbound_dns 'default-dns'
+
+config homeproxy 'dns'
+	option default_server 'default-dns'
+
+config ruleset 'geo_test'
+	option label 'geo-test'
+	option enabled '1'
+	option type 'remote'
+	option format 'binary'
+	option url 'https://example.com/{tag}.srs'
+	option initial_path '/etc/homeproxy/ruleset/{tag}.srs'
+	option outbound 'direct-out'
+	list extra_tags 'geo-extra'
