@@ -7,10 +7,19 @@ FIXTURE="$1"
 MODE="${2:-client}"
 FIXROOT="$(cd "$(dirname "$0")"; pwd)"
 WORK="/tmp/hp-fixture"
+LIVE_CONFIG="/etc/config/homeproxy"
 
 rm -rf "$WORK"
-mkdir -p "$WORK/config"
-cp "$FIXROOT/fixtures/$FIXTURE/config/homeproxy" "$WORK/config/homeproxy"
+mkdir -p "$WORK"
+
+# ucode's uci plugin always reads /etc/config; isolate by temporarily
+# swapping the config file and restoring it on exit.
+cp -a "$LIVE_CONFIG" "$WORK/live-backup"
+cp "$FIXROOT/fixtures/$FIXTURE/config/homeproxy" "$LIVE_CONFIG"
+restore_config() {
+	cp -a "$WORK/live-backup" "$LIVE_CONFIG"
+}
+trap restore_config EXIT
 
 if [ "$MODE" = "server" ]; then
 	GEN="/etc/homeproxy/scripts/generate_server.uc"
@@ -18,7 +27,7 @@ else
 	GEN="/etc/homeproxy/scripts/generate_client.uc"
 fi
 
-UCI_CONFIG_DIR="$WORK/config" ucode "$GEN" >/tmp/hp-fixture.out 2>&1
+ucode "$GEN" >/tmp/hp-fixture.out 2>&1
 RC=$?
 if [ $RC -ne 0 ]; then
 	echo "FAIL($FIXTURE): generator exited $RC"
