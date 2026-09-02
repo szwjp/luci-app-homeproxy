@@ -183,4 +183,10 @@ if (length(config.inbounds) === 0)
 	exit(1);
 
 system('mkdir -p ' + RUN_DIR);
-writefile(RUN_DIR + '/sing-box-s.json', sprintf('%.J\n', removeBlankAttrs(config)));
+const server_tmp = RUN_DIR + '/sing-box-s.json.tmp';
+writefile(server_tmp, sprintf('%.J\n', removeBlankAttrs(config)));
+if (system('/usr/bin/sing-box check --config ' + server_tmp) !== 0) {
+	system('rm -f ' + server_tmp);
+	exit(1);
+}
+system('mv -f ' + server_tmp + ' ' + RUN_DIR + '/sing-box-s.json');
