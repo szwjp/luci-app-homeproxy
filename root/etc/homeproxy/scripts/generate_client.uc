@@ -1060,7 +1060,7 @@ if (routing_mode in ['bypass_mainland_china', 'custom']) {
 		cache_file: {
 			enabled: true,
 			path: '/etc/homeproxy/cache.db',
-			store_dns: strToBool(dns_store_dns)
+			store_dns: (dns_store_dns === '1') ? true : null
 		}
 	};
 }
