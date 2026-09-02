@@ -46,7 +46,7 @@ config homeproxy 'routing'
 config homeproxy 'dns'
 	option default_server 'default-dns'
 
-config ruleset 'geo-test'
+config ruleset 'geo_test'
 	option label 'geo-test'
 	option enabled '1'
 	option type 'remote'
@@ -64,7 +64,7 @@ Create `tests/router/fixtures/client-ruleset/expect.txt`：
 "hp-direct-out"
 "http_client": "hp-direct-out"
 "initial_path": "/etc/homeproxy/ruleset/geo-test.srs"
-"cfg-geo-test-rule"
+"cfg-geo_test-rule"
 "cfg-geo-extra-rule"
 ```
 

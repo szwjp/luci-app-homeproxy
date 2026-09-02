@@ -2,7 +2,7 @@ config homeproxy 'server'
 	option enabled '1'
 	option log_level 'warn'
 
-config server 'test-ss'
+config server 'test_ss'
 	option label 'test-ss'
 	option enabled '1'
 	option type 'shadowsocks'
