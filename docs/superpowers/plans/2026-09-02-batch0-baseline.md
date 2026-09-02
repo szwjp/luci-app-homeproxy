@@ -21,7 +21,7 @@
 
 ---
 
-### Task B0-1: init.d 版本下限校验
+### Task 1: init.d 版本下限校验 (B0-1)
 
 **Files:**
 - Modify: `root/etc/init.d/homeproxy`（`start_service()` 开头，`config_load "$CONF"` 之后）
@@ -66,7 +66,7 @@ git commit -m "feat(init): require sing-box >= 1.14 at service start"
 
 ---
 
-### Task B0-2: generate_client.uc 原子落盘
+### Task 2: generate_client.uc 原子落盘 (B0-2)
 
 **Files:**
 - Modify: `root/etc/homeproxy/scripts/generate_client.uc`（文件末尾 `writefile(RUN_DIR + '/sing-box-c.json', ...)` 部分）
@@ -111,7 +111,7 @@ git commit -m "feat(gen-client): validate with sing-box check before atomic repl
 
 ---
 
-### Task B0-3: generate_server.uc 原子落盘
+### Task 3: generate_server.uc 原子落盘 (B0-3)
 
 **Files:**
 - Modify: `root/etc/homeproxy/scripts/generate_server.uc`（末尾 `writefile(RUN_DIR + '/sing-box-s.json', ...)` 部分）
@@ -155,7 +155,7 @@ git commit -m "feat(gen-server): validate with sing-box check before atomic repl
 
 ---
 
-### Task B0-4: README 最低版本说明
+### Task 4: README 最低版本说明 (B0-4)
 
 **Files:**
 - Modify: `README`
@@ -181,7 +181,7 @@ git commit -m "docs: document sing-box >= 1.14 runtime requirement"
 
 ---
 
-### Task B0-5: 路由器测试基础设施（fixture 与 wrapper 测试）
+### Task 5: 路由器测试基础设施（fixture 与 wrapper 测试）(B0-5)
 
 **Files:**
 - Create: `tests/router/run_fixture.sh`
@@ -372,7 +372,7 @@ git commit -m "test: add router fixture runner and version gate check"
 
 ---
 
-### Task B0-6: 路由器基线验证（已授权操作）
+### Task 6: 路由器基线验证（已授权操作）(B0-6)
 
 **Files:** 无（路由器操作）
 
