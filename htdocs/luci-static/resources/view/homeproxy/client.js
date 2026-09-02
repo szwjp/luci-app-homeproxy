@@ -298,6 +298,11 @@ return view.extend({
 		o.default = o.enabled;
 		o.rmempty = false;
 
+		o = s.taboption('routing', form.Flag, 'cn_ip_fallback', _('CN-IP DNS fallback (sing-box 1.14)'),
+			_('When the main DNS returns a mainland China IP, re-resolve via China DNS using evaluate/match_response.'));
+		o.depends('routing_mode', 'bypass_mainland_china');
+		o.rmempty = false;
+
 		/* Custom routing settings start */
 		/* Routing settings start */
 		o = s.taboption('routing', form.SectionValue, '_routing', form.NamedSection, 'routing', 'homeproxy');
@@ -896,23 +901,29 @@ return view.extend({
 		so = ss.option(form.Flag, 'disable_cache_expire', _('Disable cache expire'));
 		so.depends('disable_cache', '0');
 
-		so = ss.option(form.Flag, 'independent_cache', _('Independent cache per server'),
-			_('Make each DNS server\'s cache independent for special purposes. If enabled, will slightly degrade performance.'));
-		so.depends('disable_cache', '0');
-
 		so = ss.option(form.Value, 'client_subnet', _('EDNS Client subnet'),
 			_('Append a <code>edns0-subnet</code> OPT extra record with the specified IP prefix to every query by default.<br/>' +
 			'If value is an IP address instead of prefix, <code>/32</code> or <code>/128</code> will be appended automatically.'));
 		so.datatype = 'or(cidr, ipaddr)';
 
-		so = ss.option(form.Flag, 'cache_file_store_rdrc', _('Store RDRC'),
-			_('Store rejected DNS response cache.<br/>' +
-			'The check results of <code>Address filter DNS rule items</code> will be cached until expiration.'));
+		so = ss.option(form.Flag, 'optimistic_cache', _('Optimistic DNS cache'),
+			_('Return expired cache immediately and refresh in background (sing-box 1.14).'));
+		so.depends('disable_cache', '0');
+		so.depends('disable_cache_expire', '0');
+		so.rmempty = false;
 
-		so = ss.option(form.Value, 'cache_file_rdrc_timeout', _('RDRC timeout'),
-			_('Timeout of rejected DNS response cache in seconds. <code>604800 (7d)</code> is used by default.'));
+		so = ss.option(form.Value, 'optimistic_timeout', _('Optimistic cache timeout'),
+			_('Max time an expired entry may be served. Examples: 3d, 1h.'));
+		so.depends('optimistic_cache', '1');
+
+		so = ss.option(form.Value, 'dns_timeout', _('DNS query timeout'),
+			_('Default timeout per DNS query in seconds (sing-box default: 10).'));
 		so.datatype = 'uinteger';
-		so.depends('cache_file_store_rdrc', '1');
+
+		so = ss.option(form.Flag, 'cache_file_store_dns', _('Store DNS cache'),
+			_('Persist DNS cache across restarts (sing-box 1.14, replaces Store RDRC).'));
+		so.depends('disable_cache', '0');
+		so.rmempty = false;
 		/* DNS settings end */
 
 		/* DNS servers start */
@@ -1130,10 +1141,6 @@ return view.extend({
 			_('Make IP CIDR in rule sets match the source IP.'));
 		so.modalonly = true;
 
-		so = ss.taboption('field_other', form.Flag, 'rule_set_ip_cidr_accept_empty', _('Accept empty query response'),
-			_('Make IP CIDR in rule-sets accept empty query response.'));
-		so.modalonly = true;
-
 		so = ss.taboption('field_other', form.Flag, 'invert', _('Invert'),
 			_('Invert match result.'));
 		so.modalonly = true;
@@ -1143,6 +1150,8 @@ return view.extend({
 		so.value('route-options', _('Route options'));
 		so.value('reject', _('Reject'));
 		so.value('predefined', _('Predefined'));
+		so.value('evaluate', _('Evaluate (1.14)'));
+		so.value('respond', _('Respond (1.14)'));
 		so.default = 'route';
 		so.rmempty = false;
 		so.editable = true;
@@ -1165,13 +1174,7 @@ return view.extend({
 		so.rmempty = false;
 		so.editable = true;
 		so.depends('action', 'route');
-
-		so = ss.taboption('field_other', form.ListValue, 'domain_strategy', _('Domain strategy'),
-			_('Set domain strategy for this query.'));
-		for (let i in hp.dns_strategy)
-			so.value(i, hp.dns_strategy[i]);
-		so.depends('action', 'route');
-		so.modalonly = true;
+		so.depends('action', 'evaluate');
 
 		so = ss.taboption('field_other', form.Flag, 'dns_disable_cache', _('Disable dns cache'),
 			_('Disable cache and save cache in this query.'));
@@ -1192,6 +1195,66 @@ return view.extend({
 		so.datatype = 'or(cidr, ipaddr)';
 		so.depends('action', 'route');
 		so.depends('action', 'route-options');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'match_response', _('Match response'),
+			_('1 matches the latest untagged evaluate result; other values match an evaluate tag (1.14).'));
+		so.depends('action', 'route');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'evaluate_tag', _('Evaluate tag'),
+			_('Optional tag for this evaluate result.'));
+		so.depends('action', 'evaluate');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'race', _('Race'),
+			_('Judge this response-dependent rule in parallel; first match wins (1.14).'));
+		so.depends({'action': 'route', 'match_response': /[\s\S]/});
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'speculative', _('Speculative'),
+			_('Send the query before pending race rules are judged (1.14).'));
+		so.depends('action', 'route');
+		so.depends('action', 'evaluate');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'disable_optimistic_cache', _('Disable optimistic cache'),
+			_('Disable optimistic DNS caching for this query.'));
+		so.depends('action', 'route');
+		so.depends('action', 'evaluate');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Value, 'dns_timeout', _('Query timeout'),
+			_('Override dns.timeout for this query, in seconds.'));
+		so.datatype = 'uinteger';
+		so.depends('action', 'route');
+		so.depends('action', 'evaluate');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.Flag, 'remove_client_subnet', _('Remove EDNS client subnet'),
+			_('Remove the edns0-subnet record from the query (1.14).'));
+		so.depends('action', 'route');
+		so.depends('action', 'evaluate');
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.ListValue, 'response_rcode', _('Response RCode'),
+			_('Match the evaluated response code (requires match_response).'));
+		for (let rc of [ 'NOERROR', 'FORMERR', 'SERVFAIL', 'NXDOMAIN', 'NOTIMP', 'REFUSED' ])
+			so.value(rc);
+		so.depends({'action': 'route', 'match_response': /[\s\S]/});
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.DynamicList, 'response_answer', _('Response answer'),
+			_('Text DNS records to match in the evaluated answer.'));
+		so.depends({'action': 'route', 'match_response': /[\s\S]/});
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.DynamicList, 'response_ns', _('Response NS'));
+		so.depends({'action': 'route', 'match_response': /[\s\S]/});
+		so.modalonly = true;
+
+		so = ss.taboption('field_other', form.DynamicList, 'response_extra', _('Response extra'));
+		so.depends({'action': 'route', 'match_response': /[\s\S]/});
 		so.modalonly = true;
 
 		so = ss.taboption('field_other', form.ListValue, 'reject_method', _('Method'));
@@ -1260,12 +1323,21 @@ return view.extend({
 		so.modalonly = true;
 
 		so = ss.taboption('field_host', form.DynamicList, 'ip_cidr', _('IP CIDR'),
-			_('Match IP CIDR with query response. Current rule will be skipped if not match.'));
+			_('Match IP CIDR with the evaluated response (needs match_response; old rules are auto-wrapped in 1.14).'));
 		so.datatype = 'or(cidr, ipaddr)';
 		so.modalonly = true;
 
 		so = ss.taboption('field_host', form.Flag, 'ip_is_private', _('Match private IP'),
-			_('Match private IP with query response.'));
+			_('Match private IP with the evaluated response (needs match_response).'));
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.Value, 'query_client_subnet', _('Query EDNS client subnet'),
+			_('Match the EDNS Client Subnet in the query (1.14).'));
+		so.datatype = 'or(cidr, ipaddr)';
+		so.modalonly = true;
+
+		so = ss.taboption('field_host', form.Flag, 'query_dnssec', _('Match DNSSEC OK'),
+			_('Match queries with the DNSSEC OK bit set (1.14).'));
 		so.modalonly = true;
 
 		so = ss.taboption('field_port', form.DynamicList, 'source_port', _('Source port'),
