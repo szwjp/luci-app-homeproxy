@@ -1,0 +1,4 @@
+"tag": "dns-in"
+"tag": "mixed-in"
+"tag": "direct-out"
+"final": "main-dns"

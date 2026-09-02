@@ -1,0 +1,11 @@
+config homeproxy 'server'
+	option enabled '1'
+	option log_level 'warn'
+
+config server 'test-ss'
+	option label 'test-ss'
+	option enabled '1'
+	option type 'shadowsocks'
+	option port '8388'
+	option shadowsocks_encrypt_method 'aes-128-gcm'
+	option password 'secret'
