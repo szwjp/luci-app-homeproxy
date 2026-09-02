@@ -227,6 +227,25 @@ uci.foreach(uciconfig, ucinode, (cfg) => {
 		uci.rename(uciconfig, cfg['.name'], 'hysteria_revc_window', 'hysteria_recv_window');
 });
 
+/* sing-box 1.14: remove deprecated DNS semantics */
+if (!isEmpty(uci.get(uciconfig, ucidns, 'independent_cache')))
+	uci.delete(uciconfig, ucidns, 'independent_cache');
+
+const legacy_store_rdrc = uci.get(uciconfig, ucidns, 'cache_file_store_rdrc');
+if (!isEmpty(legacy_store_rdrc)) {
+	uci.set(uciconfig, ucidns, 'cache_file_store_dns', legacy_store_rdrc);
+	uci.delete(uciconfig, ucidns, 'cache_file_store_rdrc');
+}
+if (!isEmpty(uci.get(uciconfig, ucidns, 'cache_file_rdrc_timeout')))
+	uci.delete(uciconfig, ucidns, 'cache_file_rdrc_timeout');
+
+uci.foreach(uciconfig, ucidnsrule, (cfg) => {
+	if (!isEmpty(cfg.domain_strategy))
+		uci.delete(uciconfig, cfg['.name'], 'domain_strategy');
+	if (!isEmpty(cfg.rule_set_ip_cidr_accept_empty))
+		uci.delete(uciconfig, cfg['.name'], 'rule_set_ip_cidr_accept_empty');
+});
+
 /* routing rules options */
 uci.foreach(uciconfig, uciroutingrule, (cfg) => {
 	/* rule_set_ipcidr_match_source was renamed in sb 1.10 */
