@@ -28,6 +28,12 @@ The modern ImmortalWrt proxy platform for ARM64/AMD64, based on sing-box.
 > 当前代码为分拆基线（源自 27.820.3），上述特性将随开发逐步落地，未完成前不在
 > LuCI 界面与生成脚本中暴露 1.14 专属行为，保证任意时刻可构建、可运行。
 
+## 运行要求
+
+- ImmortalWrt / OpenWrt 24.10+（apk 或 opkg 均可安装）
+- sing-box >= 1.14.0（ImmortalWrt 25.12 源对应 sing-box 1.14.0-r1）
+- 低于 1.14 时服务会拒绝启动并记录明确日志
+
 ## 构建
 
 克隆本项目后放入 OpenWrt/ImmortalWrt SDK 的 `package/` 目录，执行：
