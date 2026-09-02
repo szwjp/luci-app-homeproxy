@@ -624,6 +624,29 @@ return view.extend({
 			}
 			o.modalonly = true;
 
+			o = s.option(form.Value, 'tls_acme_key_type', _('ACME key type'),
+				_('Private key type for new certificates (1.14). Empty uses the default.'));
+			o.value('ed25519');
+			o.value('p256');
+			o.value('p384');
+			o.value('rsa2048');
+			o.value('rsa4096');
+			o.depends('tls_acme', '1');
+			o.modalonly = true;
+
+			o = s.option(form.Value, 'tls_acme_profile', _('ACME profile'),
+				_('ACME profile for certificate issuance (1.14). Example: shortlived.'));
+			o.placeholder = 'shortlived';
+			o.depends('tls_acme', '1');
+			o.modalonly = true;
+
+			o = s.option(form.TextValue, 'tls_acme_account_key', _('ACME account key'),
+				_('PEM-encoded private key of an existing ACME account (1.14).'));
+			o.monospace = true;
+			o.rows = 3;
+			o.depends('tls_acme', '1');
+			o.modalonly = true;
+
 			o = s.option(form.Value, 'tls_acme_provider', _('CA provider'),
 				_('The ACME CA provider to use.'));
 			o.value('letsencrypt', _('Let\'s Encrypt'));
