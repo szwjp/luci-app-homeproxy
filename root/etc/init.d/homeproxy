@@ -34,6 +34,20 @@ restore_upnp_mappings() {
 start_service() {
 	config_load "$CONF"
 
+	local sb_ver sb_major sb_minor
+	sb_ver="$(sing-box version -n 2>/dev/null)"
+	if [ -z "$sb_ver" ]; then
+		log "Error: cannot detect sing-box version, abort."
+		return 1
+	fi
+	sb_major="${sb_ver%%.*}"
+	sb_minor="${sb_ver#*.}"
+	sb_minor="${sb_minor%%.*}"
+	if [ "$sb_major" -lt 1 ] || { [ "$sb_major" -eq 1 ] && [ "$sb_minor" -lt 14 ]; }; then
+		log "Error: sing-box >= 1.14.0 required, found ${sb_ver}."
+		return 1
+	fi
+
 	local routing_mode proxy_mode
 	config_get routing_mode "config" "routing_mode" "bypass_mainland_china"
 	config_get proxy_mode "config" "proxy_mode" "redirect_tproxy"
