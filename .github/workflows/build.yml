@@ -1,0 +1,147 @@
+name: Build
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: build-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: write
+
+env:
+  APK_TOOLS_REF: 'b5a31c0d865342ad80be10d68f1bb3d3ad9b0866'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout source tree
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          fetch-depth: 0   # build-pkg.sh 的 git describe/rev-parse 兜底需要完整历史
+
+      - name: Cache apk-tools binary
+        id: cache-apk-tools
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9
+        with:
+          path: /usr/local/bin/apk
+          key: apk-tools-${{ env.APK_TOOLS_REF }}-${{ runner.os }}
+
+      - name: Checkout apk-tools
+        if: steps.cache-apk-tools.outputs.cache-hit != 'true'
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: 'alpinelinux/apk-tools'
+          path: 'apk-tools'
+          fetch-depth: 0
+          ref: ${{ env.APK_TOOLS_REF }}
+
+      - name: Checkout po2lmo
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1
+        with:
+          repository: 'openwrt/luci'
+          path: 'po2lmo'
+          sparse-checkout: 'modules/luci-base/src'
+
+      - name: Setup dependencies
+        env:
+          DEBIAN_FRONTEND: noninteractive
+        run: |
+          sudo -E apt-get update -qq
+          sudo -E apt-get install -y build-essential curl fakeroot libssl-dev lua5.1 meson ninja-build
+
+          if [ "${{ steps.cache-apk-tools.outputs.cache-hit }}" != "true" ]; then
+            pushd apk-tools
+            meson setup build \
+              -Db_lto=true \
+              -Dcompressed-help=false \
+              -Ddocs=disabled \
+              -Dhelp=enabled \
+              -Dlua_version=5.1 \
+              -Ddefault_library=static \
+              -Durl_backend=wget \
+              -Dzstd=false \
+              -Dpython=disabled \
+              -Dtests=disabled \
+              -Dcrypto_backend=openssl
+            ninja -C build
+            sudo -E meson install -C build --strip
+            popd
+          else
+            echo "apk-tools 缓存命中，跳过编译"
+          fi
+
+          pushd po2lmo/modules/luci-base/src
+          make po2lmo
+          sudo -E install -m0755 -s po2lmo /usr/local/bin/po2lmo
+          popd
+
+          curl -fLO "https://raw.githubusercontent.com/openwrt/openwrt/master/scripts/ipkg-build"
+          sudo install -m0755 ipkg-build /usr/local/bin/ipkg-build
+
+      - name: Verify toolchain
+        run: |
+          command -v apk >/dev/null || { echo "::error::apk 未正确安装"; exit 1; }
+          command -v po2lmo >/dev/null || { echo "::error::po2lmo 未正确安装"; exit 1; }
+          command -v ipkg-build >/dev/null || { echo "::error::ipkg-build 未正确安装"; exit 1; }
+          apk --version
+
+      - name: Build packages (apk + ipk)
+        run: |
+          fakeroot bash .github/build-pkg.sh apk "${{ github.event_name }}"
+          fakeroot bash .github/build-pkg.sh ipk "${{ github.event_name }}"
+          shopt -s nullglob
+          apks=(.github/*.apk)
+          ipks=(.github/*.ipk)
+          if [ "${#apks[@]}" -eq 0 ] || [ "${#ipks[@]}" -eq 0 ]; then
+            echo "::error::未生成预期的 apk/ipk 文件"
+            exit 1
+          fi
+          printf '生成的包:\n%s\n' "${apks[@]}" "${ipks[@]}"
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a
+        with:
+          name: homeproxy-packages
+          include-hidden-files: true
+          path: |
+            .github/*.apk
+            .github/*.ipk
+
+      - name: Cleanup old release and tag
+        if: github.event_name != 'pull_request'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -o pipefail
+          RELEASE_ID=$(curl -fsS -H "Authorization: Bearer $GH_TOKEN" -H "Accept: application/vnd.github+json" \
+            "https://api.github.com/repos/${{ github.repository }}/releases/tags/luci-app-homeproxy" | jq -r '.id' 2>/dev/null) || RELEASE_ID=""
+          if [ -n "$RELEASE_ID" ] && [ "$RELEASE_ID" != "null" ]; then
+            curl -fsS -X DELETE -H "Authorization: Bearer $GH_TOKEN" \
+              "https://api.github.com/repos/${{ github.repository }}/releases/$RELEASE_ID" \
+              || echo "::warning::删除旧 release $RELEASE_ID 失败，继续"
+          fi
+          curl -fsS -X DELETE -H "Authorization: Bearer $GH_TOKEN" \
+            "https://api.github.com/repos/${{ github.repository }}/git/refs/tags/luci-app-homeproxy" \
+            || echo "::warning::tag luci-app-homeproxy 不存在或删除失败，继续"
+
+      - name: Publish to Latest Build Release
+        if: github.event_name != 'pull_request'
+        uses: softprops/action-gh-release@fe965f7af51af5f2602596916f38a38df2e33de0
+        with:
+          tag_name: luci-app-homeproxy
+          name: HomeProxy 1.14 Latest Build
+          body: |
+            Automatically built on ${{ github.run_id }}.
+            Commit: ${{ github.sha }}
+          files: |
+            .github/luci-app-homeproxy-*.apk
+            .github/luci-app-homeproxy-*.ipk
+            .github/luci-i18n-homeproxy-*.apk
+            .github/luci-i18n-homeproxy-*.ipk
+          token: ${{ github.token }}

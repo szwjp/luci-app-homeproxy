@@ -1,0 +1,404 @@
+#!/bin/sh /etc/rc.common
+# SPDX-License-Identifier: GPL-2.0-only
+#
+# Copyright (C) 2022-2023 ImmortalWrt.org
+
+USE_PROCD=1
+
+START=99
+STOP=10
+
+CONF="homeproxy"
+PROG="/usr/bin/sing-box"
+
+HP_DIR="/etc/homeproxy"
+RUN_DIR="/var/run/homeproxy"
+LOG_PATH="$RUN_DIR/homeproxy.log"
+
+DNSMASQ_UCI_CONFIG="$(uci -q show "dhcp.@dnsmasq[0]" | awk 'NR==1 {split($0, conf, /[.=]/); print conf[2]}')"
+if [ -f "/tmp/etc/dnsmasq.conf.$DNSMASQ_UCI_CONFIG" ]; then
+	DNSMASQ_DIR="$(awk -F '=' '/^conf-dir=/ {print $2}' "/tmp/etc/dnsmasq.conf.$DNSMASQ_UCI_CONFIG")/dnsmasq-homeproxy.d"
+else
+	DNSMASQ_DIR="/tmp/dnsmasq.d/dnsmasq-homeproxy.d"
+fi
+
+log() {
+	echo -e "$(date "+%Y-%m-%d %H:%M:%S") [DAEMON] $*" >> "$LOG_PATH"
+}
+
+restore_upnp_mappings() {
+	[ -x /etc/init.d/miniupnpd ] && /etc/init.d/miniupnpd enabled && /etc/init.d/miniupnpd running \
+		&& /etc/init.d/miniupnpd restart >"/dev/null" 2>&1
+}
+
+start_service() {
+	config_load "$CONF"
+
+	local routing_mode proxy_mode
+	config_get routing_mode "config" "routing_mode" "bypass_mainland_china"
+	config_get proxy_mode "config" "proxy_mode" "redirect_tproxy"
+
+	local outbound_node
+	if [ "$routing_mode" != "custom" ]; then
+		config_get outbound_node "config" "main_node" "nil"
+	else
+		config_get outbound_node "routing" "default_outbound" "nil"
+	fi
+
+	local server_enabled
+	config_get_bool server_enabled "server" "enabled" "0"
+
+	if [ "$outbound_node" = "nil" ] && [ "$server_enabled" = "0" ]; then
+		log "Neither client nor server is configured. Service not started."
+		return 1
+	fi
+
+	mkdir -p "$RUN_DIR"
+
+	local disable_gso=0
+	uname -r | grep -Eq "^6\.6" && disable_gso=1
+
+	if [ "$outbound_node" != "nil" ]; then
+		local wan_waited=0
+		while ! { ip route show default 2>"/dev/null" | grep -q . \
+			|| ip -6 route show default 2>"/dev/null" | grep -q . \
+			|| ifstatus wan 2>"/dev/null" | grep -q '"up": true'; }; do
+			wan_waited=$((wan_waited + 1))
+			if [ "$wan_waited" -ge 60 ]; then
+				log "WARNING: No network route after 60s, starting sing-box anyway."
+				break
+			fi
+			sleep 1
+		done
+
+		ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"
+
+		if [ ! -e "$RUN_DIR/sing-box-c.json" ]; then
+			log "Error: failed to generate client configuration."
+			return 1
+		elif ! "$PROG" check --config "$RUN_DIR/sing-box-c.json" 2>>"$LOG_PATH"; then
+			log "Error: wrong client configuration detected."
+			return 1
+		fi
+
+		local auto_update auto_update_time
+		config_get_bool auto_update "subscription" "auto_update" "0"
+		if [ "$auto_update" = "1" ]; then
+			config_get auto_update_time "subscription" "auto_update_time" "2"
+			sed -i "/#${CONF}_autosetup/d" "/etc/crontabs/root" 2>"/dev/null"
+			echo -e "0 $auto_update_time * * * $HP_DIR/scripts/update_crond.sh #${CONF}_autosetup" >> "/etc/crontabs/root"
+			/etc/init.d/cron restart
+		fi
+
+		local ipv6_support dns_port
+		config_get_bool ipv6_support "config" "ipv6_support" "0"
+		config_get dns_port "infra" "dns_port" "5333"
+		mkdir -p "$DNSMASQ_DIR"
+		echo -e "conf-dir=$DNSMASQ_DIR" > "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf"
+		case "$routing_mode" in
+		"bypass_mainland_china"|"custom"|"global")
+			cat <<-EOF > "$DNSMASQ_DIR/redirect-dns.conf"
+				no-poll
+				no-resolv
+				server=127.0.0.1#$dns_port
+			EOF
+			;;
+		"gfwlist")
+			local gfw_nftset_v6
+			[ "$ipv6_support" -eq "0" ] || gfw_nftset_v6=",6#inet#fw4#homeproxy_gfw_list_v6"
+			sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_gfw_list_v4$gfw_nftset_v6/g" \
+				"$HP_DIR/resources/gfw_list.txt" > "$DNSMASQ_DIR/gfw_list.conf"
+			;;
+		"proxy_mainland_china")
+			sed -r -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port/g" \
+				"$HP_DIR/resources/china_list.txt" > "$DNSMASQ_DIR/china_list.conf"
+			;;
+		esac
+
+		if [ "$routing_mode" != "custom" ] && [ -s "$HP_DIR/resources/proxy_list.txt" ]; then
+			local wan_nftset_v6
+			[ "$ipv6_support" -eq "0" ] || wan_nftset_v6=",6#inet#fw4#homeproxy_wan_proxy_addr_v6"
+			sed -r -e '/^\s*$/d' -e "s/(.*)/server=\/\1\/127.0.0.1#$dns_port\nnftset=\/\1\\/4#inet#fw4#homeproxy_wan_proxy_addr_v4$wan_nftset_v6/g" \
+				"$HP_DIR/resources/proxy_list.txt" > "$DNSMASQ_DIR/proxy_list.conf"
+		fi
+		/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
+
+		local table_mark
+		config_get table_mark "infra" "table_mark" "100"
+		case "$proxy_mode" in
+		"redirect_tproxy")
+			local outbound_udp_node
+			config_get outbound_udp_node "config" "main_udp_node" "nil"
+			if [ "$outbound_udp_node" != "nil" ] || [ "$routing_mode" = "custom" ]; then
+				local tproxy_mark
+				config_get tproxy_mark "infra" "tproxy_mark" "101"
+
+				ip rule add fwmark "$tproxy_mark" table "$table_mark"
+				ip route add local 0.0.0.0/0 dev lo table "$table_mark"
+
+				if [ "$ipv6_support" -eq "1" ]; then
+					ip -6 rule add fwmark "$tproxy_mark" table "$table_mark"
+					ip -6 route add local ::/0 dev lo table "$table_mark"
+				fi
+			fi
+			;;
+		"redirect_tun"|"tun")
+			local tun_name tun_mark
+			config_get tun_name "infra" "tun_name" "singtun0"
+			config_get tun_mark "infra" "tun_mark" "102"
+
+			ip tuntap add mode tun user root name "$tun_name"
+			sleep 1s
+			ip link set "$tun_name" up
+
+			ip route replace default dev "$tun_name" table "$table_mark"
+			ip rule add fwmark "$tun_mark" lookup "$table_mark"
+
+			if [ "$ipv6_support" -eq "1" ]; then
+				ip -6 route replace default dev "$tun_name" table "$table_mark"
+				ip -6 rule add fwmark "$tun_mark" lookup "$table_mark"
+			fi
+			;;
+		esac
+
+		procd_open_instance "sing-box-c"
+
+		procd_set_param command "$PROG"
+		procd_append_param command run --config "$RUN_DIR/sing-box-c.json"
+
+		[ "$disable_gso" -eq "1" ] && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
+
+		if [ -x "/sbin/ujail" ] && [ "$routing_mode" != "custom" ] && ! grep -Eq '"type": "(wireguard|tun)"' "$RUN_DIR/sing-box-c.json"; then
+			procd_add_jail "sing-box-c" log procfs
+			procd_add_jail_mount "$RUN_DIR/sing-box-c.json"
+			procd_add_jail_mount_rw "$RUN_DIR/sing-box-c.log"
+			[ "$routing_mode" != "bypass_mainland_china" ] || procd_add_jail_mount_rw "$HP_DIR/cache.db"
+			procd_add_jail_mount "$HP_DIR/certs/"
+			procd_add_jail_mount "/etc/ssl/"
+			procd_add_jail_mount "/etc/localtime"
+			procd_add_jail_mount "/etc/TZ"
+			procd_set_param capabilities "/etc/capabilities/homeproxy.json"
+			procd_set_param no_new_privs 1
+			procd_set_param user sing-box
+			procd_set_param group sing-box
+		fi
+
+		procd_set_param limits core="unlimited"
+		procd_set_param limits nofile="1000000 1000000"
+		procd_set_param stderr 1
+		procd_set_param respawn
+
+		procd_close_instance
+	fi
+
+	if [ "$server_enabled" = "1" ]; then
+		ucode -S "$HP_DIR/scripts/generate_server.uc" 2>>"$LOG_PATH"
+
+		if [ ! -e "$RUN_DIR/sing-box-s.json" ]; then
+			log "Error: failed to generate server configuration."
+			return 1
+		elif ! "$PROG" check --config "$RUN_DIR/sing-box-s.json" 2>>"$LOG_PATH"; then
+			log "Error: wrong server configuration detected."
+			return 1
+		fi
+
+		procd_open_instance "sing-box-s"
+
+		procd_set_param command "$PROG"
+		procd_append_param command run --config "$RUN_DIR/sing-box-s.json"
+
+		[ "$disable_gso" -eq "1" ] && procd_set_param env "QUIC_GO_DISABLE_GSO"="true"
+
+		if [ -x "/sbin/ujail" ]; then
+			procd_add_jail "sing-box-s" log procfs
+			procd_add_jail_mount "$RUN_DIR/sing-box-s.json"
+			procd_add_jail_mount_rw "$RUN_DIR/sing-box-s.log"
+			procd_add_jail_mount_rw "$HP_DIR/certs/"
+			procd_add_jail_mount "/etc/acme/"
+			procd_add_jail_mount "/etc/ssl/"
+			procd_add_jail_mount "/etc/localtime"
+			procd_add_jail_mount "/etc/TZ"
+			procd_set_param capabilities "/etc/capabilities/homeproxy.json"
+			procd_set_param no_new_privs 1
+			procd_set_param user sing-box
+			procd_set_param group sing-box
+		fi
+
+		procd_set_param limits core="unlimited"
+		procd_set_param limits nofile="1000000 1000000"
+		procd_set_param stderr 1
+		procd_set_param respawn
+
+		procd_close_instance
+	fi
+
+	procd_open_instance "log-cleaner"
+	procd_set_param command "$HP_DIR/scripts/clean_log.sh"
+	procd_set_param respawn
+	procd_close_instance
+
+	case "$routing_mode" in
+	"bypass_mainland_china")
+		[ -e "$HP_DIR/cache.db" ] || touch "$HP_DIR/cache.db"
+		;;
+	"custom")
+		[ -d "$HP_DIR/ruleset" ] || mkdir -p "$HP_DIR/ruleset"
+		;;
+	esac
+
+	[ "$outbound_node" = "nil" ] || echo > "$RUN_DIR/sing-box-c.log"
+	if [ "$server_enabled" = "1" ]; then
+		echo > "$RUN_DIR/sing-box-s.log"
+		mkdir -p "$HP_DIR/certs"
+	fi
+
+	chown sing-box:sing-box "$RUN_DIR"/sing-box-*.json "$RUN_DIR"/sing-box-*.log "$HP_DIR"/cache.db 2>"/dev/null"
+
+	ucode "$HP_DIR/scripts/firewall_pre.uc" 2>"/dev/null" || log "Error: firewall pre-script failed."
+	if [ "$outbound_node" != "nil" ]; then
+		utpl -S "$HP_DIR/scripts/firewall_post.ut" > "$RUN_DIR/fw4_post.nft" 2>"/dev/null" || log "Error: firewall post-script failed."
+	fi
+	fw4 reload >"/dev/null" 2>&1 || log "Error: fw4 reload failed."
+	restore_upnp_mappings
+
+	log "sing-box $(sing-box version -n 2>/dev/null || echo "unknown") started."
+}
+
+stop_service() {
+	sed -i "/#${CONF}_autosetup/d" "/etc/crontabs/root" 2>"/dev/null"
+	/etc/init.d/cron restart >"/dev/null" 2>&1
+
+	config_load "$CONF"
+	local table_mark tproxy_mark tun_mark tun_name
+	config_get table_mark "infra" "table_mark" "100"
+	config_get tproxy_mark "infra" "tproxy_mark" "101"
+	config_get tun_mark "infra" "tun_mark" "102"
+	config_get tun_name "infra" "tun_name" "singtun0"
+
+	ip rule del fwmark "$tproxy_mark" table "$table_mark" 2>"/dev/null"
+	ip route del local 0.0.0.0/0 dev lo table "$table_mark" 2>"/dev/null"
+	ip -6 rule del fwmark "$tproxy_mark" table "$table_mark" 2>"/dev/null"
+	ip -6 route del local ::/0 dev lo table "$table_mark" 2>"/dev/null"
+
+	ip route del default dev "$tun_name" table "$table_mark" 2>"/dev/null"
+	ip rule del fwmark "$tun_mark" table "$table_mark" 2>"/dev/null"
+
+	ip -6 route del default dev "$tun_name" table "$table_mark" 2>"/dev/null"
+	ip -6 rule del fwmark "$tun_mark" table "$table_mark" 2>"/dev/null"
+
+	nft -f - 2>"/dev/null" <<-EOF
+		flush chain inet fw4 homeproxy_dstnat_redir
+		delete chain inet fw4 homeproxy_dstnat_redir
+		flush chain inet fw4 homeproxy_output_redir
+		delete chain inet fw4 homeproxy_output_redir
+		flush chain inet fw4 homeproxy_redirect
+		delete chain inet fw4 homeproxy_redirect
+		flush chain inet fw4 homeproxy_redirect_proxy
+		delete chain inet fw4 homeproxy_redirect_proxy
+		flush chain inet fw4 homeproxy_redirect_proxy_port
+		delete chain inet fw4 homeproxy_redirect_proxy_port
+		flush chain inet fw4 homeproxy_redirect_lanac
+		delete chain inet fw4 homeproxy_redirect_lanac
+		flush chain inet fw4 homeproxy_mangle_prerouting
+		delete chain inet fw4 homeproxy_mangle_prerouting
+		flush chain inet fw4 homeproxy_mangle_output
+		delete chain inet fw4 homeproxy_mangle_output
+		flush chain inet fw4 homeproxy_mangle_tproxy
+		delete chain inet fw4 homeproxy_mangle_tproxy
+		flush chain inet fw4 homeproxy_mangle_tproxy_port
+		delete chain inet fw4 homeproxy_mangle_tproxy_port
+		flush chain inet fw4 homeproxy_mangle_tproxy_lanac
+		delete chain inet fw4 homeproxy_mangle_tproxy_lanac
+		flush chain inet fw4 homeproxy_mangle_mark
+		delete chain inet fw4 homeproxy_mangle_mark
+		flush chain inet fw4 homeproxy_mangle_tun
+		delete chain inet fw4 homeproxy_mangle_tun
+		flush chain inet fw4 homeproxy_mangle_tun_mark
+		delete chain inet fw4 homeproxy_mangle_tun_mark
+		flush set inet fw4 homeproxy_local_addr_v4
+		delete set inet fw4 homeproxy_local_addr_v4
+		flush set inet fw4 homeproxy_local_addr_v6
+		delete set inet fw4 homeproxy_local_addr_v6
+		flush set inet fw4 homeproxy_gfw_list_v4
+		delete set inet fw4 homeproxy_gfw_list_v4
+		flush set inet fw4 homeproxy_gfw_list_v6
+		delete set inet fw4 homeproxy_gfw_list_v6
+		flush set inet fw4 homeproxy_mainland_addr_v4
+		delete set inet fw4 homeproxy_mainland_addr_v4
+		flush set inet fw4 homeproxy_mainland_addr_v6
+		delete set inet fw4 homeproxy_mainland_addr_v6
+		flush set inet fw4 homeproxy_wan_proxy_addr_v4
+		delete set inet fw4 homeproxy_wan_proxy_addr_v4
+		flush set inet fw4 homeproxy_wan_proxy_addr_v6
+		delete set inet fw4 homeproxy_wan_proxy_addr_v6
+		flush set inet fw4 homeproxy_wan_direct_addr_v4
+		delete set inet fw4 homeproxy_wan_direct_addr_v4
+		flush set inet fw4 homeproxy_wan_direct_addr_v6
+		delete set inet fw4 homeproxy_wan_direct_addr_v6
+		flush set inet fw4 homeproxy_routing_port
+		delete set inet fw4 homeproxy_routing_port
+	EOF
+	: > "$RUN_DIR/fw4_forward.nft"
+	: > "$RUN_DIR/fw4_input.nft"
+	: > "$RUN_DIR/fw4_post.nft"
+	fw4 reload >"/dev/null" 2>&1 || log "Warning: fw4 reload failed during stop."
+	restore_upnp_mappings
+
+	rm -rf "$DNSMASQ_DIR/../dnsmasq-homeproxy.conf" "$DNSMASQ_DIR"
+	/etc/init.d/dnsmasq restart >"/dev/null" 2>&1
+
+	rm -f "$RUN_DIR/sing-box-c.json" "$RUN_DIR/sing-box-c.log" \
+		"$RUN_DIR/sing-box-s.json" "$RUN_DIR/sing-box-s.log"
+
+	log "Service stopped."
+}
+
+service_stopped() {
+	config_load "$CONF"
+	local tun_name
+	config_get tun_name "infra" "tun_name" "singtun0"
+
+	ip link set "$tun_name" down 2>"/dev/null"
+	ip tuntap del mode tun name "$tun_name" 2>"/dev/null"
+}
+
+reload_service() {
+	log "Reloading service..."
+
+	config_load "$CONF"
+	local routing_mode
+	config_get routing_mode "config" "routing_mode" "bypass_mainland_china"
+
+	local outbound_node
+	if [ "$routing_mode" != "custom" ]; then
+		config_get outbound_node "config" "main_node" "nil"
+	else
+		config_get outbound_node "routing" "default_outbound" "nil"
+	fi
+
+	if [ "$outbound_node" != "nil" ]; then
+		ucode -S "$HP_DIR/scripts/generate_client.uc" 2>>"$LOG_PATH"
+		if ! "$PROG" check --config "$RUN_DIR/sing-box-c.json" 2>>"$LOG_PATH"; then
+			log "Error: new client config is invalid, reload aborted."
+			return 1
+		fi
+	fi
+
+	local server_enabled
+	config_get_bool server_enabled "server" "enabled" "0"
+	if [ "$server_enabled" = "1" ]; then
+		ucode -S "$HP_DIR/scripts/generate_server.uc" 2>>"$LOG_PATH"
+		if ! "$PROG" check --config "$RUN_DIR/sing-box-s.json" 2>>"$LOG_PATH"; then
+			log "Error: new server config is invalid, reload aborted."
+			return 1
+		fi
+	fi
+
+	stop
+	start
+}
+
+service_triggers() {
+	procd_add_reload_trigger "$CONF"
+	procd_add_interface_trigger "interface.*.up" wan /etc/init.d/$CONF reload
+}
