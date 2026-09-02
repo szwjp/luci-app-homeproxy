@@ -1440,7 +1440,7 @@ return view.extend({
 		so.modalonly = true;
 
 		so = ss.option(form.ListValue, 'outbound', _('Outbound'),
-			_('Tag of the outbound to download rule set.'));
+			_('Outbound used to download this rule-set (via sing-box 1.14 http_clients).'));
 		so.load = function(section_id) {
 			delete this.keylist;
 			delete this.vallist;
@@ -1455,6 +1455,25 @@ return view.extend({
 			return this.super('load', section_id);
 		}
 		so.depends('type', 'remote');
+
+		so = ss.option(form.Value, 'initial_path', _('Initial path'),
+			_('Local file with initial rule-set content; avoids blocking startup on first download (1.14).'));
+		so.datatype = 'file';
+		so.depends('type', 'remote');
+		so.modalonly = true;
+
+		so = ss.option(form.DynamicList, 'extra_tags', _('Extra tags'),
+			_('Extra rule-set tags sharing these options. Requires {tag} in path/url (1.14).'));
+		so.depends('type', 'remote');
+		so.validate = function(section_id, value) {
+			if (section_id && value && value.length) {
+				let rule_url = this.section.formvalue(section_id, 'url') || '';
+				if (!rule_url.includes('{tag}'))
+					return _('Expecting: %s').format(_('{tag} in URL when extra tags are used'));
+			}
+			return true;
+		}
+		so.modalonly = true;
 
 		so = ss.option(form.Value, 'update_interval', _('Update interval'),
 			_('Update interval of rule set.'));
