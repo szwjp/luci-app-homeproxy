@@ -311,7 +311,7 @@ return view.extend({
 		o.value('hijack', _('Hijack'));
 		o.depends('proxy_mode', 'redirect_tun');
 		o.depends('proxy_mode', 'tun');
-		o.rmempty = false;
+		o.rmempty = true;
 
 		o = s.taboption('routing', form.DynamicList, 'tun_dns_address', _('TUN DNS addresses (1.14)'));
 		o.datatype = 'ipaddr';
@@ -326,7 +326,7 @@ return view.extend({
 		o.depends('proxy_mode', 'redirect_tproxy');
 		o.depends('proxy_mode', 'redirect_tun');
 		o.depends('proxy_mode', 'tun');
-		o.rmempty = false;
+		o.rmempty = true;
 
 		o = s.taboption('routing', form.ListValue, 'udp_filtering', _('UDP NAT filtering (1.14)'));
 		o.value('', _('Default'));
@@ -336,7 +336,7 @@ return view.extend({
 		o.depends('proxy_mode', 'redirect_tproxy');
 		o.depends('proxy_mode', 'redirect_tun');
 		o.depends('proxy_mode', 'tun');
-		o.rmempty = false;
+		o.rmempty = true;
 
 		o = s.taboption('routing', form.Value, 'udp_nat_max', _('UDP NAT sessions max (1.14)'));
 		o.datatype = 'uinteger';
