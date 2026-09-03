@@ -136,11 +136,15 @@ if (match(proxy_mode, /tun/)) {
 const log_level = uci.get(uciconfig, ucimain, 'log_level') || 'warn';
 /* UCI config end */
 
-const tun_dns_mode = uci.get(uciconfig, ucimain, 'tun_dns_mode'),
+const tun_dns_mode_raw = uci.get(uciconfig, ucimain, 'tun_dns_mode'),
       tun_dns_address = uci.get(uciconfig, ucimain, 'tun_dns_address'),
-      udp_mapping = uci.get(uciconfig, ucimain, 'udp_mapping'),
-      udp_filtering = uci.get(uciconfig, ucimain, 'udp_filtering'),
+      udp_mapping_raw = uci.get(uciconfig, ucimain, 'udp_mapping'),
+      udp_filtering_raw = uci.get(uciconfig, ucimain, 'udp_filtering'),
       udp_nat_max = strToInt(uci.get(uciconfig, ucimain, 'udp_nat_max'));
+
+const tun_dns_mode = (tun_dns_mode_raw === 'default') ? '' : tun_dns_mode_raw,
+      udp_mapping = (udp_mapping_raw === 'default') ? '' : udp_mapping_raw,
+      udp_filtering = (udp_filtering_raw === 'default') ? '' : udp_filtering_raw;
 
 /* Config helper start */
 function parse_port(strport) {

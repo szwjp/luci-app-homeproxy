@@ -305,37 +305,40 @@ return view.extend({
 
 		o = s.taboption('routing', form.ListValue, 'tun_dns_mode', _('TUN DNS mode (1.14)'),
 			_('Leave empty to keep current behavior. hijack/native lets sing-box manage platform DNS; may overlap dnsmasq DNS hijack.'));
-		o.value('', _('Unset (default)'));
+		o.value('default', _('Unset (default)'));
 		o.value('disabled', _('Disabled'));
 		o.value('native', _('Native'));
 		o.value('hijack', _('Hijack'));
 		o.depends('proxy_mode', 'redirect_tun');
 		o.depends('proxy_mode', 'tun');
+		o.default = 'default';
 		o.rmempty = true;
 
 		o = s.taboption('routing', form.DynamicList, 'tun_dns_address', _('TUN DNS addresses (1.14)'));
 		o.datatype = 'ipaddr';
-		o.depends({'proxy_mode': /^((?!custom).)+$/, 'tun_dns_mode': /[\s\S]/});
+		o.depends({'proxy_mode': /^((?!custom).)+$/, 'tun_dns_mode': /^(disabled|native|hijack)$/});
 		o.modalonly = true;
 
 		o = s.taboption('routing', form.ListValue, 'udp_mapping', _('UDP NAT mapping (1.14)'));
-		o.value('', _('Default'));
+		o.value('default', _('Default'));
 		o.value('endpoint_independent', _('Endpoint independent'));
 		o.value('address_dependent', _('Address dependent'));
 		o.value('address_and_port_dependent', _('Address and port dependent'));
 		o.depends('proxy_mode', 'redirect_tproxy');
 		o.depends('proxy_mode', 'redirect_tun');
 		o.depends('proxy_mode', 'tun');
+		o.default = 'default';
 		o.rmempty = true;
 
 		o = s.taboption('routing', form.ListValue, 'udp_filtering', _('UDP NAT filtering (1.14)'));
-		o.value('', _('Default'));
+		o.value('default', _('Default'));
 		o.value('endpoint_independent', _('Endpoint independent'));
 		o.value('address_dependent', _('Address dependent'));
 		o.value('address_and_port_dependent', _('Address and port dependent'));
 		o.depends('proxy_mode', 'redirect_tproxy');
 		o.depends('proxy_mode', 'redirect_tun');
 		o.depends('proxy_mode', 'tun');
+		o.default = 'default';
 		o.rmempty = true;
 
 		o = s.taboption('routing', form.Value, 'udp_nat_max', _('UDP NAT sessions max (1.14)'));
