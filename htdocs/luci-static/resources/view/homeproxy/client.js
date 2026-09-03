@@ -303,28 +303,6 @@ return view.extend({
 		o.depends('routing_mode', 'bypass_mainland_china');
 		o.rmempty = false;
 
-		/* DNS cache / timeout for preset routing modes (stored in the dns section) */
-		s.tab('dns_cache', _('DNS Cache (1.14)'));
-		o = s.taboption('dns_cache', form.SectionValue, '_dns_cache', form.NamedSection, 'dns', 'homeproxy');
-		o.depends({'routing_mode': 'custom', '!reverse': true});
-		ss = o.subsection;
-
-		so = ss.option(form.Flag, 'optimistic_cache', _('Optimistic DNS cache'),
-			_('Return expired cache immediately and refresh in background (sing-box 1.14).'));
-		so.rmempty = false;
-
-		so = ss.option(form.Value, 'optimistic_timeout', _('Optimistic cache timeout'),
-			_('Max time an expired entry may be served. Examples: 3d, 1h.'));
-		so.depends('optimistic_cache', '1');
-
-		so = ss.option(form.Value, 'dns_timeout', _('DNS query timeout'),
-			_('Default timeout per DNS query in seconds (sing-box default: 10).'));
-		so.datatype = 'uinteger';
-
-		so = ss.option(form.Flag, 'cache_file_store_dns', _('Store DNS cache'),
-			_('Persist DNS cache across restarts (replaces Store RDRC).'));
-		so.rmempty = false;
-
 		o = s.taboption('routing', form.ListValue, 'tun_dns_mode', _('TUN DNS mode (1.14)'),
 			_('Leave empty to keep current behavior. hijack/native lets sing-box manage platform DNS; may overlap dnsmasq DNS hijack.'));
 		o.value('default', _('Unset (default)'));
@@ -1722,6 +1700,28 @@ return view.extend({
 		}
 		/* Direct domain list end */
 		/* ACL settings end */
+
+		/* DNS cache / timeout for preset routing modes (rightmost tab, stored in the dns section) */
+		s.tab('dns_cache', _('DNS Cache (1.14)'));
+		o = s.taboption('dns_cache', form.SectionValue, '_dns_cache', form.NamedSection, 'dns', 'homeproxy');
+		o.depends({'routing_mode': 'custom', '!reverse': true});
+		ss = o.subsection;
+
+		so = ss.option(form.Flag, 'optimistic_cache', _('Optimistic DNS cache'),
+			_('Return expired cache immediately and refresh in background (sing-box 1.14).'));
+		so.rmempty = false;
+
+		so = ss.option(form.Value, 'optimistic_timeout', _('Optimistic cache timeout'),
+			_('Max time an expired entry may be served. Examples: 3d, 1h.'));
+		so.depends('optimistic_cache', '1');
+
+		so = ss.option(form.Value, 'dns_timeout', _('DNS query timeout'),
+			_('Default timeout per DNS query in seconds (sing-box default: 10).'));
+		so.datatype = 'uinteger';
+
+		so = ss.option(form.Flag, 'cache_file_store_dns', _('Store DNS cache'),
+			_('Persist DNS cache across restarts (replaces Store RDRC).'));
+		so.rmempty = false;
 
 		return m.render();
 	}
