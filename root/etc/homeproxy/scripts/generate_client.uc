@@ -420,6 +420,17 @@ function get_ruleset(cfg) {
 		push(rules, isEmpty(i) ? null : 'cfg-' + i + '-rule');
 	return rules;
 }
+
+function isDirectOutboundTag(tag) {
+	if (isEmpty(tag) || tag === 'block-out')
+		return false;
+	if (tag === 'direct-out')
+		return true;
+
+	const node_name = uci.get(uciconfig, tag, 'node') || tag;
+	const node = uci.get_all(uciconfig, node_name);
+	return !isEmpty(node) && node.type === 'direct';
+}
 /* Config helper end */
 
 const config = {};
@@ -1105,10 +1116,13 @@ for (let rs in (config.route.rule_set || [])) {
 	rs.http_client = tag;
 	if (!http_seen[detour]) {
 		http_seen[detour] = true;
-		push(http_clients, {
-			tag: tag,
-			detour: detour
-		});
+		/* sing-box 1.14 rejects detouring to an empty direct outbound
+		   (pure TUN mode has no self_mark on direct-out). Omitting detour
+		   uses the same system direct dialer, so behavior is unchanged. */
+		const client = { tag: tag };
+		if (!(isEmpty(self_mark) && isDirectOutboundTag(detour)))
+			client.detour = detour;
+		push(http_clients, client);
 	}
 }
 if (length(http_clients))
