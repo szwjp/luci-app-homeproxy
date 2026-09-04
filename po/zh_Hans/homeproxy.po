@@ -3081,8 +3081,8 @@ msgid "Unknown error: %s"
 msgstr "未知错误：%s"
 
 #: htdocs/luci-static/resources/view/homeproxy/client.js:308
-msgid "Unset (default)"
-msgstr "不设置（默认）"
+msgid "Unset"
+msgstr "不设置"
 
 #: htdocs/luci-static/resources/view/homeproxy/node.js:1135
 msgid "Unsupported fingerprint!"

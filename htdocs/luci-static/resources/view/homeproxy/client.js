@@ -305,7 +305,7 @@ return view.extend({
 
 		o = s.taboption('routing', form.ListValue, 'tun_dns_mode', _('TUN DNS mode (1.14)'),
 			_('Leave empty to keep current behavior. hijack/native lets sing-box manage platform DNS; may overlap dnsmasq DNS hijack.'));
-		o.value('default', _('Unset (default)'));
+		o.value('default', _('Unset'));
 		o.value('disabled', _('Disabled'));
 		o.value('native', _('Native'));
 		o.value('hijack', _('Hijack'));
