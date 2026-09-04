@@ -115,13 +115,13 @@ msgstr ""
 msgid "Address"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:326
-#: htdocs/luci-static/resources/view/homeproxy/client.js:337
+#: htdocs/luci-static/resources/view/homeproxy/client.js:325
+#: htdocs/luci-static/resources/view/homeproxy/client.js:336
 msgid "Address and port dependent"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:325
-#: htdocs/luci-static/resources/view/homeproxy/client.js:336
+#: htdocs/luci-static/resources/view/homeproxy/client.js:324
+#: htdocs/luci-static/resources/view/homeproxy/client.js:335
 msgid "Address dependent"
 msgstr ""
 
@@ -485,8 +485,6 @@ msgid "Debug"
 msgstr ""
 
 #: htdocs/luci-static/resources/homeproxy.js:17
-#: htdocs/luci-static/resources/view/homeproxy/client.js:323
-#: htdocs/luci-static/resources/view/homeproxy/client.js:334
 #: htdocs/luci-static/resources/view/homeproxy/client.js:481
 #: htdocs/luci-static/resources/view/homeproxy/client.js:651
 #: htdocs/luci-static/resources/view/homeproxy/client.js:803
@@ -849,8 +847,8 @@ msgstr ""
 msgid "Encrypt method"
 msgstr ""
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:324
-#: htdocs/luci-static/resources/view/homeproxy/client.js:335
+#: htdocs/luci-static/resources/view/homeproxy/client.js:323
+#: htdocs/luci-static/resources/view/homeproxy/client.js:334
 msgid "Endpoint independent"
 msgstr ""
 
@@ -3216,6 +3214,18 @@ msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/status.js:285
 msgid "sing-box client"
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:337
+msgid ""
+"sing-box default; recommended for home use (accepts replies from any remote "
+"after mapping). Choose stricter only for specific UDP issues."
+msgstr ""
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:326
+msgid ""
+"sing-box default; recommended for home use (small NAT table, QUIC/game "
+"friendly). Choose stricter only for specific UDP issues."
 msgstr ""
 
 #: htdocs/luci-static/resources/view/homeproxy/status.js:288

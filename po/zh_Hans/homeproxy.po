@@ -127,13 +127,13 @@ msgstr "发送到 DNS 服务器的附加标头。"
 msgid "Address"
 msgstr "地址"
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:326
-#: htdocs/luci-static/resources/view/homeproxy/client.js:337
+#: htdocs/luci-static/resources/view/homeproxy/client.js:325
+#: htdocs/luci-static/resources/view/homeproxy/client.js:336
 msgid "Address and port dependent"
 msgstr "地址与端口相关"
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:325
-#: htdocs/luci-static/resources/view/homeproxy/client.js:336
+#: htdocs/luci-static/resources/view/homeproxy/client.js:324
+#: htdocs/luci-static/resources/view/homeproxy/client.js:335
 msgid "Address dependent"
 msgstr "地址相关"
 
@@ -502,8 +502,6 @@ msgid "Debug"
 msgstr "调试"
 
 #: htdocs/luci-static/resources/homeproxy.js:17
-#: htdocs/luci-static/resources/view/homeproxy/client.js:323
-#: htdocs/luci-static/resources/view/homeproxy/client.js:334
 #: htdocs/luci-static/resources/view/homeproxy/client.js:481
 #: htdocs/luci-static/resources/view/homeproxy/client.js:651
 #: htdocs/luci-static/resources/view/homeproxy/client.js:803
@@ -886,8 +884,8 @@ msgstr "启用 SUoT 协议，需要服务端支持。与多路复用冲突。"
 msgid "Encrypt method"
 msgstr "加密方式"
 
-#: htdocs/luci-static/resources/view/homeproxy/client.js:324
-#: htdocs/luci-static/resources/view/homeproxy/client.js:335
+#: htdocs/luci-static/resources/view/homeproxy/client.js:323
+#: htdocs/luci-static/resources/view/homeproxy/client.js:334
 msgid "Endpoint independent"
 msgstr "端点无关"
 
@@ -3329,6 +3327,18 @@ msgstr "quic-go / uquic chrome"
 #: htdocs/luci-static/resources/view/homeproxy/status.js:285
 msgid "sing-box client"
 msgstr "sing-box 客户端"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:337
+msgid ""
+"sing-box default; recommended for home use (accepts replies from any remote "
+"after mapping). Choose stricter only for specific UDP issues."
+msgstr "sing-box 默认值，家用推荐（建映射后接受任意远端回包）。仅当遇到特定 UDP 问题时才用更严格选项。"
+
+#: htdocs/luci-static/resources/view/homeproxy/client.js:326
+msgid ""
+"sing-box default; recommended for home use (small NAT table, QUIC/game "
+"friendly). Choose stricter only for specific UDP issues."
+msgstr "sing-box 默认值，家用推荐（NAT 表占用小，对游戏/QUIC 友好）。仅当遇到特定 UDP 问题时才用更严格选项。"
 
 #: htdocs/luci-static/resources/view/homeproxy/status.js:288
 msgid "sing-box server"
