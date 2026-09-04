@@ -36,6 +36,19 @@ The modern ImmortalWrt proxy platform for ARM64/AMD64, based on sing-box.
 - 证书：tls.acme → certificate_provider（key_type/profile/account_key）
 - 工程化：生成配置内置 $schema；运行要求 sing-box >= 1.14
 
+## 已修复：国内域名走代理问题（r4）
+
+背景：`bypass_mainland_china` 的数据路由原本只用 `geoip-cn`（按 IP 匹配国内目标）；
+sing-box 不会把「域名连接」的域名解析成 IP 再去匹配 IP 规则集，因此**按域名访问的国内站**
+（如字节 `bytedance.com`、百度 `baidu.com` 等）落到 `main-out` 走了代理，只有「裸 IP 访问
+国内 IP」才直连。
+
+修复：数据路由在 `geoip-cn → direct-out`（IP 级）之前并列增加一条 `geosite-cn → direct-out`
+（域名级）规则，使国内目标**按域名和按 IP 都能直连**。
+
+验证（sing-box 1.14.0 真机路由决策日志）：`www.bytedance.com` / `www.baidu.com` 均命中
+`geosite-cn => route(direct-out)` 走直连；非中国域名 `example.com` 仍走 `main-out`（代理）。
+
 ## 运行要求
 
 - ImmortalWrt / OpenWrt 24.10+（apk 或 opkg 均可安装）
