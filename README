@@ -24,9 +24,7 @@ The modern ImmortalWrt proxy platform for ARM64/AMD64, based on sing-box.
 - 证书：`tls.acme` → `certificate_provider` 迁移（旧字段 1.16 移除）
 - 工程：JSON Schema（`$schema`）辅助配置校验与排错
 
-> 1.14 特性已按批次落地并经测试机验证；未列入的目标（见
-> docs/superpowers/specs/2026-09-02-homeproxy1.14-singbox-1.14-features-design.md）
-> 不在 LuCI 界面与生成脚本中暴露。
+> 1.14 特性已按批次落地并经测试机验证；明确未列入的目标不在 LuCI 界面与生成脚本中暴露。
 
 ## 已融入的 sing-box 1.14 特性
 
