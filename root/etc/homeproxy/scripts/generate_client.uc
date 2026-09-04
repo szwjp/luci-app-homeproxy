@@ -915,13 +915,22 @@ if (!isEmpty(main_node)) {
 			outbound: 'direct-out'
 		});
 
-	/* Bypass CN traffic */
-	if (routing_mode === 'bypass_mainland_china')
+	/* Bypass CN traffic: Chinese destinations go direct. Match by domain
+	   (geosite-cn) in addition to by IP (geoip-cn): sing-box does not resolve
+	   a destination domain before matching an IP-based rule set, so with a
+	   geoip-only rule Chinese domains (e.g. ByteDance) would go to the proxy. */
+	if (routing_mode === 'bypass_mainland_china') {
+		push(config.route.rules, {
+			rule_set: 'geosite-cn',
+			action: 'route',
+			outbound: 'direct-out'
+		});
 		push(config.route.rules, {
 			rule_set: 'geoip-cn',
 			action: 'route',
 			outbound: 'direct-out'
 		});
+	}
 
 	/* Main UDP out */
 	if (dedicated_udp_node) {
