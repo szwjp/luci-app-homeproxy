@@ -1,5 +1,0 @@
-"tag": "dns-in"
-"tag": "mixed-in"
-"tag": "direct-out"
-"final": "main-dns"
-"$schema": "https://sing-box.sagernet.org/schema.json"

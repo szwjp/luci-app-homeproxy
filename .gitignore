@@ -3,4 +3,6 @@
 .worktrees/
 .superpowers/
 docs/superpowers/
+tests/router/
+
 

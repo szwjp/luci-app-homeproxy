@@ -1,8 +1,0 @@
-"dns_mode": "hijack"
-"172.19.0.1"
-"udp_mapping": "endpoint_independent"
-"udp_filtering": "address_dependent"
-"udp_nat_max": 8192
-"00:11:22:33:44:55"
-"nas"
-"find_neighbor": true

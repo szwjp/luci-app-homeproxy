@@ -1,4 +1,0 @@
-"type": "shadowsocks"
-"listen_port": 8388
-"$schema": "https://sing-box.sagernet.org/schema.json"
-!certificate_provider

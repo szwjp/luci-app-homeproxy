@@ -1,4 +1,0 @@
-"certificate_provider": {
-"type": "acme"
-"key_type": "p256"
-"profile": "shortlived"
