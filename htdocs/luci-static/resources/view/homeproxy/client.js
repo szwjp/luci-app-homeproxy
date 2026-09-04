@@ -1208,7 +1208,6 @@ return view.extend({
 		so.value('reject', _('Reject'));
 		so.value('predefined', _('Predefined'));
 		so.value('evaluate', _('Evaluate (1.14)'));
-		so.value('respond', _('Respond (1.14)'));
 		so.default = 'route';
 		so.rmempty = false;
 		so.editable = true;

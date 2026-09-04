@@ -1025,10 +1025,16 @@ if (!isEmpty(main_node)) {
 			rule_override_port = rule_direct_override.override_port;
 		}
 
-		push(config.route.rules, {
+		/* sing-box routing rule: emit match fields plus action-specific fields.
+		   client is the sniffed client type (only set with protocol quic/ssh);
+		   resolve adds server/strategy/disable_cache/rewrite_ttl/client_subnet;
+		   reject adds method/no_drop. Emitted conditionally so a given action
+		   never carries fields sing-box rejects for it. */
+		const rule = {
 			ip_version: strToInt(cfg.ip_version),
 			protocol: cfg.protocol,
 			network: cfg.network,
+			client: cfg.client,
 			domain: cfg.domain,
 			domain_suffix: cfg.domain_suffix,
 			domain_keyword: cfg.domain_keyword,
@@ -1060,7 +1066,19 @@ if (!isEmpty(main_node)) {
 			tls_record_fragment: strToBool(cfg.tls_record_fragment),
 			source_mac_address: cfg.source_mac_address,
 			source_hostname: cfg.source_hostname
-		});
+		};
+		if (cfg.action === 'resolve') {
+			rule.server = get_resolver(cfg.resolve_server);
+			rule.strategy = cfg.resolve_strategy;
+			rule.disable_cache = strToBool(cfg.resolve_disable_cache);
+			rule.rewrite_ttl = strToInt(cfg.resolve_rewrite_ttl);
+			rule.client_subnet = cfg.resolve_client_subnet;
+		}
+		if (cfg.action === 'reject') {
+			rule.method = cfg.reject_method;
+			rule.no_drop = strToBool(cfg.reject_no_drop);
+		}
+		push(config.route.rules, rule);
 	});
 
 	/* Direct-node destination override, emitted as route-options action

@@ -94,6 +94,8 @@ if (default_dns_server === 'block-dns') {
 	uci.set(uciconfig, '_migration_dns_final_block', 'action', 'reject');
 	uci.set(uciconfig, ucidns, 'default_server', 'default-dns');
 }
+else if (default_dns_server === 'local-dns')
+	uci.set(uciconfig, ucidns, 'default_server', 'default-dns');
 
 const dns_server_migration = {};
 /* DNS servers options */

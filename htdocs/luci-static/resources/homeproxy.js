@@ -290,7 +290,8 @@ return baseclass.extend({
 				else if (!value[2])
 					value[2] = 65535;
 
-				if (value[1] < value[2] && value[2] <= 65535)
+				/* numeric comparison: string '<' does lexicographic ordering */
+				if (parseInt(value[1], 10) < parseInt(value[2], 10) && value[2] <= 65535)
 					return true;
 			}
 
