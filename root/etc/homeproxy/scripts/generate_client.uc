@@ -901,9 +901,13 @@ config.route = {
 
 /* Routing rules */
 if (!isEmpty(main_node)) {
-	/* Avoid DNS loop */
+	/* Resolve outbound server domains through the WAN default resolver.
+	   Do not use china-dns here: china-dns is for resolving mainland China
+	   destinations, not the proxy node itself. Coupling node bootstrap to
+	   china_dns_server can break dialing when that resolver is polluted or
+	   unsuitable for the node domain. */
 	config.route.default_domain_resolver = {
-		server: (routing_mode === 'bypass_mainland_china') ? 'china-dns' : 'default-dns',
+		server: 'default-dns',
 		strategy: (ipv6_support !== '1') ? 'prefer_ipv4' : null
 	};
 
