@@ -15,18 +15,20 @@ homeproxy1.14（本项目）sing-box ≥ 1.14 ｜ 1.14 特性驱动升级，配�
 - 证书：tls.acme → certificate_provider（key_type/profile/account_key）
 - 工程化：生成配置内置 $schema；运行要求 sing-box >= 1.14
 
-## 已修复：国内域名走代理问题（r4）
+## 已修复：国内域名走代理问题（r4 r6）
 
 背景：`bypass_mainland_china` 的数据路由原本只用 `geoip-cn`（按 IP 匹配国内目标）；
 sing-box 不会把「域名连接」的域名解析成 IP 再去匹配 IP 规则集，因此**按域名访问的国内站**
 （如字节 `bytedance.com`、百度 `baidu.com` 等）落到 `main-out` 走了代理，只有「裸 IP 访问
 国内 IP」才直连。
 
-修复：数据路由在 `geoip-cn → direct-out`（IP 级）之前并列增加一条 `geosite-cn → direct-out`
+r4修复：数据路由在 `geoip-cn → direct-out`（IP 级）之前并列增加一条 `geosite-cn → direct-out`
 （域名级）规则，使国内目标**按域名和按 IP 都能直连**。
 
-（r6 补充：`geosite-cn` 会把个别境外域名误归为"国内"，如 Google 的信标 `gvt2.com`，导致被直连超时；
-故数据路由在 `geosite-cn` 之前增加 `geosite-noncn → main-out`，让非国内域名先走代理，避免此类误直连。）
+r6修复：`geosite-cn` 会把个别境外域名误归为"国内"，如 Google 的信标 `gvt2.com`等，导致被直连超时；
+故数据路由在 `geosite-cn` 之前增加 `geosite-noncn → main-out`，让非国内域名先走代理，避免此类误直连。
+
+至此，三个规则集srs（`geoip-cn` / `geosite-cn` / `geosite-noncn`）在路由端全部派上用途。
 
 ## 新增：规则集自动更新（r5）
 
