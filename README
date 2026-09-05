@@ -18,8 +18,7 @@ homeproxy1.14（本项目）sing-box ≥ 1.14 ｜ 1.14 特性驱动升级，配�
 ## 已修复：国内域名走代理问题（r4 r6）
 
 背景：`bypass_mainland_china` 的数据路由原本只用 `geoip-cn`（按 IP 匹配国内目标）；
-sing-box 不会把「域名连接」的域名解析成 IP 再去匹配 IP 规则集，因此**按域名访问的国内站**
-（如字节 `bytedance.com`、百度 `baidu.com` 等）落到 `main-out` 走了代理，只有「裸 IP 访问
+sing-box 不会把「域名连接」的域名解析成 IP 再去匹配 IP 规则集，因此按域名访问的国内站（如字节 、百度等域名访问）落到 `main-out` 走了代理，只有「裸 IP 访问
 国内 IP」才直连。
 
 r4修复：数据路由在 `geoip-cn → direct-out`（IP 级）之前并列增加一条 `geosite-cn → direct-out`
@@ -42,6 +41,4 @@ r6修复：`geosite-cn` 会把个别境外域名误归为"国内"，如 Google �
 - sing-box≥1.14.0（ImmortalWrt 25.12 源对应 sing-box 1.14.0-r1）
 - 低于 1.14 时服务会拒绝启动并记录明确日志
 
-## 许可证
-
-[GPL-2.0-only](LICENSE)，版权归 ImmortalWrt.org 与各贡献者。
+## 许可证：[GPL-2.0-only](LICENSE)，版权归 ImmortalWrt.org 与各贡献者。
