@@ -987,6 +987,7 @@ if (!isEmpty(main_node)) {
 			tag: 'geoip-cn',
 			format: 'binary',
 			url: 'https://fastly.jsdelivr.net/gh/SagerNet/sing-geoip@rule-set/geoip-cn.srs',
+			update_interval: '24h',
 			download_detour: 'direct-out'
 		});
 		push(config.route.rule_set, {
@@ -994,6 +995,7 @@ if (!isEmpty(main_node)) {
 			tag: 'geosite-cn',
 			format: 'binary',
 			url: 'https://fastly.jsdelivr.net/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs',
+			update_interval: '24h',
 			download_detour: 'direct-out'
 		});
 		push(config.route.rule_set, {
@@ -1001,6 +1003,7 @@ if (!isEmpty(main_node)) {
 			tag: 'geosite-noncn',
 			format: 'binary',
 			url: 'https://fastly.jsdelivr.net/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs',
+			update_interval: '24h',
 			download_detour: 'direct-out'
 		});
 	}
