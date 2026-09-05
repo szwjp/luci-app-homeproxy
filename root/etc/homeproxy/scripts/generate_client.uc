@@ -71,7 +71,7 @@ if (routing_mode !== 'custom') {
 	if (routing_mode === 'bypass_mainland_china') {
 		china_dns_server = uci.get(uciconfig, ucimain, 'china_dns_server');
 		if (isEmpty(china_dns_server) || type(china_dns_server) !== 'string' || china_dns_server === 'wan')
-			china_dns_server = wan_dns;
+			china_dns_server = '223.5.5.5';
 	}
 	dns_default_strategy = (ipv6_support !== '1') ? 'ipv4_only' : null;
 
@@ -919,20 +919,15 @@ if (!isEmpty(main_node)) {
 			outbound: 'direct-out'
 		});
 
-	/* Bypass CN traffic: route non-CN domains by rule set first so sing-box
-	   does not resolve mis-classified foreign domains (e.g. Google's gvt2.com
-	   beacons) through china-dns. The default WAN/ISP china DNS returns
-	   polluted China IPs for those domains, which then match geoip-cn and get
-	   sent direct to time out. The remaining (domestic) domain destinations
-	   are resolved and then matched by geoip-cn: China IPs go direct and
-	   everything else falls through to main-out (proxy). Keep the
-	   direct-domain fast-path above for known direct domains. */
+	/* Bypass CN traffic: resolve the destination first, then route by IP.
+	   sing-box does not match an IP-based rule set (geoip-cn) against a domain
+	   destination unless it is resolved first, so add an explicit resolve
+	   action; geoip-cn then sends China IPs to direct and everything else falls
+	   through to main-out (proxy). This avoids relying on the geosite-* domain
+	   lists, which can mis-classify foreign domains (e.g. Google's gvt2.com
+	   beacons) as "cn" and send them direct to time out. Keep the direct-domain
+	   fast-path above for known direct domains. */
 	if (routing_mode === 'bypass_mainland_china') {
-		push(config.route.rules, {
-			rule_set: 'geosite-noncn',
-			action: 'route',
-			outbound: 'main-out'
-		});
 		push(config.route.rules, {
 			action: 'resolve',
 			strategy: (ipv6_support !== '1') ? 'prefer_ipv4' : null
@@ -1007,14 +1002,6 @@ if (!isEmpty(main_node)) {
 			tag: 'geosite-cn',
 			format: 'binary',
 			url: 'https://fastly.jsdelivr.net/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-cn.srs',
-			update_interval: '24h',
-			download_detour: 'direct-out'
-		});
-		push(config.route.rule_set, {
-			type: 'remote',
-			tag: 'geosite-noncn',
-			format: 'binary',
-			url: 'https://fastly.jsdelivr.net/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs',
 			update_interval: '24h',
 			download_detour: 'direct-out'
 		});
