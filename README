@@ -2,29 +2,10 @@
 
 The modern ImmortalWrt proxy platform for ARM64/AMD64, based on sing-box.
 
-本项目是 [luci-app-homeproxy](https://github.com/szwjp/homeproxy) 的分拆版本线：
+## 本项目是 [luci-app-homeproxy](https://github.com/szwjp/homeproxy) 的分拆版本线：
+
 以 sing-box **1.14** 内核为唯一目标，充分结合 1.14 引入的新特性进行升级，不再兼容 1.13 及更早内核。
-
-## 与原项目的关系
-
-| 项目 | 目标内核 | 版本线 | 定位 |
-|------|---------|--------|------|
-| homeproxy | sing-box 1.13 / 1.14 双版本兼容 | 27.820.x | 平滑过渡，一套代码跑两代内核 |
-| homeproxy1.14（本项目） | sing-box ≥ 1.14 | 1.14.x | 1.14 特性驱动升级，配置生成可直接使用 1.14 新格式 |
-
-`PKG_NAME` 保持 `luci-app-homeproxy` 不变，与 LuCI 菜单、`/etc/config/homeproxy`、
-`/usr/share/rpcd` 等安装路径保持一致；区分体现在独立版本线（`PKG_VERSION=1.14.0`）
-与 LuCI 标题标识（sing-box 1.14）。
-
-## 项目改造特性（围绕 sing-box 1.14）
-
-- DNS：`evaluate` / `match_response` 响应匹配、乐观 DNS 缓存（`optimistic` / `store_dns`）、统一 `timeout`
-- 规则集：`initial_path` 预置、多 tag 规则集、`http_clients` 统一 HTTP 客户端（替代 `download_detour`）
-- 入站/转发：TUN `dns_mode` / `dns_address`、UDP NAT 参数化
-- 证书：`tls.acme` → `certificate_provider` 迁移（旧字段 1.16 移除）
-- 工程：JSON Schema（`$schema`）辅助配置校验与排错
-
-> 1.14 特性已按批次落地并经测试机验证；明确未列入的目标不在 LuCI 界面与生成脚本中暴露。
+homeproxy1.14（本项目）sing-box ≥ 1.14 ｜ 1.14 特性驱动升级，配置生成直接使用 1.14 新格式。
 
 ## 已融入的 sing-box 1.14 特性
 
@@ -44,13 +25,10 @@ sing-box 不会把「域名连接」的域名解析成 IP 再去匹配 IP 规则
 修复：数据路由在 `geoip-cn → direct-out`（IP 级）之前并列增加一条 `geosite-cn → direct-out`
 （域名级）规则，使国内目标**按域名和按 IP 都能直连**。
 
-验证（sing-box 1.14.0 真机路由决策日志）：`www.bytedance.com` / `www.baidu.com` 均命中
-`geosite-cn => route(direct-out)` 走直连；非中国域名 `example.com` 仍走 `main-out`（代理）。
-
 ## 运行要求
 
-- ImmortalWrt / OpenWrt 24.10+（apk 或 opkg 均可安装）
-- sing-box >= 1.14.0（ImmortalWrt 25.12 源对应 sing-box 1.14.0-r1）
+- ImmortalWrt / OpenWrt ≥ 24.10+（apk 或 opkg 均可安装）
+- sing-box≥1.14.0（ImmortalWrt 25.12 源对应 sing-box 1.14.0-r1）
 - 低于 1.14 时服务会拒绝启动并记录明确日志
 
 ## 许可证
