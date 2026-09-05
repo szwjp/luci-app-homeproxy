@@ -915,23 +915,18 @@ if (!isEmpty(main_node)) {
 			outbound: 'direct-out'
 		});
 
-	/* Bypass CN traffic: Chinese destinations go direct. Match by domain
-	   (geosite-cn) in addition to by IP (geoip-cn): sing-box does not resolve
-	   a destination domain before matching an IP-based rule set, so with a
-	   geoip-only rule Chinese domains (e.g. ByteDance) would go to the proxy.
-	   Route non-CN domains (geosite-noncn) to the proxy FIRST: the sing-geosite
-	   cn list can mis-classify a few foreign domains (e.g. Google's gvt2.com
-	   beacons) as "cn", which would otherwise be sent direct and time out. */
+	/* Bypass CN traffic: resolve the destination first, then route by IP.
+	   sing-box does not match an IP-based rule set (geoip-cn) against a domain
+	   destination unless it is resolved first, so add an explicit resolve
+	   action; geoip-cn then sends China IPs to direct and everything else falls
+	   through to main-out (proxy). This avoids relying on the geosite-* domain
+	   lists, which can mis-classify foreign domains (e.g. Google's gvt2.com
+	   beacons) as "cn" and send them direct to time out. Keep the direct-domain
+	   fast-path above for known direct domains. */
 	if (routing_mode === 'bypass_mainland_china') {
 		push(config.route.rules, {
-			rule_set: 'geosite-noncn',
-			action: 'route',
-			outbound: 'main-out'
-		});
-		push(config.route.rules, {
-			rule_set: 'geosite-cn',
-			action: 'route',
-			outbound: 'direct-out'
+			action: 'resolve',
+			strategy: 'prefer_ipv4'
 		});
 		push(config.route.rules, {
 			rule_set: 'geoip-cn',
