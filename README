@@ -25,6 +25,12 @@ sing-box 不会把「域名连接」的域名解析成 IP 再去匹配 IP 规则
 修复：数据路由在 `geoip-cn → direct-out`（IP 级）之前并列增加一条 `geosite-cn → direct-out`
 （域名级）规则，使国内目标**按域名和按 IP 都能直连**。
 
+## 新增：规则集自动更新（r5）
+
+给 `bypass_mainland_china` 的三个远程规则集（`geoip-cn` / `geosite-cn` / `geosite-noncn`）增加
+`update_interval: '24h'`，sing-box 每 24 小时自动重新拉取 `.srs`；热替换、不中断既有连接，下载失败时保留
+旧规则集、不影响分流。注：`update_interval` 为相对间隔（自启动起算），非 cron 定点，无法对齐"凌晨3点"。
+
 ## 运行要求
 
 - ImmortalWrt / OpenWrt ≥ 24.10+（apk 或 opkg 均可安装）
