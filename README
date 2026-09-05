@@ -29,7 +29,7 @@ sing-box 不会把「域名连接」的域名解析成 IP 再去匹配 IP 规则
 
 给 `bypass_mainland_china` 的三个远程规则集（`geoip-cn` / `geosite-cn` / `geosite-noncn`）增加
 `update_interval: '24h'`，sing-box 每 24 小时自动重新拉取 `.srs`；热替换、不中断既有连接，下载失败时保留
-旧规则集、不影响分流。注：`update_interval` 为相对间隔（自启动起算），非 cron 定点，无法对齐"凌晨3点"。
+旧规则集、不影响分流。
 
 ## 运行要求
 
