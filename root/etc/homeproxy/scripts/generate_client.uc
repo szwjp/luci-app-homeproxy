@@ -915,22 +915,22 @@ if (!isEmpty(main_node)) {
 			outbound: 'direct-out'
 		});
 
-	/* Bypass CN traffic: resolve the destination first, then route by IP.
-	   sing-box does not match an IP-based rule set (geoip-cn) against a domain
-	   destination unless it is resolved first, so add an explicit resolve
-	   action. Resolve through main-dns explicitly so sing-box 1.14 does not
-	   select a server through config.dns.rules: those rules route geosite-cn
-	   domains to china-dns, whose default WAN/ISP resolver returns polluted
-	   answers for mis-classified foreign domains (e.g. Google's gvt2.com
-	   beacons), which would then match geoip-cn and be sent direct. geoip-cn
-	   then sends China IPs to direct and everything else falls through to
-	   main-out (proxy). This avoids relying on the geosite-* domain lists,
-	   which can mis-classify foreign domains and send them direct to time out.
-	   Keep the direct-domain fast-path above for known direct domains. */
+	/* Bypass CN traffic: route non-CN domains by rule set first so sing-box
+	   does not resolve mis-classified foreign domains (e.g. Google's gvt2.com
+	   beacons) through china-dns. The default WAN/ISP china DNS returns
+	   polluted China IPs for those domains, which then match geoip-cn and get
+	   sent direct to time out. The remaining (domestic) domain destinations
+	   are resolved and then matched by geoip-cn: China IPs go direct and
+	   everything else falls through to main-out (proxy). Keep the
+	   direct-domain fast-path above for known direct domains. */
 	if (routing_mode === 'bypass_mainland_china') {
 		push(config.route.rules, {
+			rule_set: 'geosite-noncn',
+			action: 'route',
+			outbound: 'main-out'
+		});
+		push(config.route.rules, {
 			action: 'resolve',
-			server: 'main-dns',
 			strategy: (ipv6_support !== '1') ? 'prefer_ipv4' : null
 		});
 		push(config.route.rules, {
