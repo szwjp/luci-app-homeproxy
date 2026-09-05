@@ -1005,6 +1005,14 @@ if (!isEmpty(main_node)) {
 			update_interval: '24h',
 			download_detour: 'direct-out'
 		});
+		push(config.route.rule_set, {
+			type: 'remote',
+			tag: 'geosite-noncn',
+			format: 'binary',
+			url: 'https://fastly.jsdelivr.net/gh/SagerNet/sing-geosite@rule-set/geosite-geolocation-!cn.srs',
+			update_interval: '24h',
+			download_detour: 'direct-out'
+		});
 	}
 
 	if (isEmpty(config.route.rule_set))

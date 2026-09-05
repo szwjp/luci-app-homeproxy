@@ -29,7 +29,7 @@ r4 r6 r7修复：数据路由改用 `action: resolve (prefer_ipv4)` + `geoip-cn 
 
 ## 新增：规则集自动更新（r5）
 
-给 `bypass_mainland_china` 的两个远程规则集（`geoip-cn` / `geosite-cn`）增加
+给 `bypass_mainland_china` 的三个远程规则集（`geoip-cn` / `geosite-cn` / `geosite-noncn`）增加
 `update_interval: '24h'`，sing-box 每 24 小时自动重新拉取 `.srs`；热替换、不中断既有连接，下载失败时保留
 旧规则集、不影响分流。
 
