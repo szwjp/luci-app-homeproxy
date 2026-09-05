@@ -20,9 +20,13 @@ homeproxy1.14（本项目）sing-box ≥ 1.14 ｜ 1.14 特性驱动升级，配�
 背景：`bypass_mainland_china` 的数据路由原本只用 `geoip-cn`（按 IP 匹配国内目标）；sing-box 不会把「域名连接」的域名解析成 
 IP 再去匹配 IP 规则集，因此按域名访问的国内站（如字节 、百度等域名访问）落到 `main-out` 走了代理，只有「裸 IP 访问国内 IP」才直连。
 
-r4 r6 r7修复：数据路由改用 `action: resolve (prefer_ipv4)` + `geoip-cn → direct-out`——先解析域名再做 IP 匹配，由真实 IP 
-决定国内/国外（国内 IP→直连，其余→代理）；不再依赖 `geosite-cn`/`geosite-noncn` 域名规则做数据判定（`geosite-cn` 仍用于 DNS 路由）。
+r4 r6 r7修复：数据路由采用「`geosite-noncn → main-out` 前置 + `resolve` + `geoip-cn → direct-out`」的混合方案——
+先按域名规则把境外/被误归域名（如 gvt2.com）直接代理，避免其进入国内 DNS 被污染；剩余域名解析后按真实 IP 判定，
+国内 IP→直连，其余→代理。`geosite-cn` 仍用于 DNS 平面把国内域名交给 china-dns。
 对"字节/百度等国内域名"和"被误归的 gvt2.com"都更稳，且对 DNS 污染更鲁棒。
+
+可选增强 `cn_ip_fallback`：启用后使用 1.14 原生 `evaluate/match_response`，对非 geosite-cn 域名若 main-dns 返回国内 IP，
+再回退到 china-dns 解析。
 
 ## 新增：规则集自动更新（r5）
 
