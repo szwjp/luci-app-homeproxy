@@ -22,7 +22,29 @@ jobs:
 
       # Every template string must have a non-fuzzy, non-empty zh_Hans
       # translation; the handful of technical tokens that stay as-is are
-      # listed in tests/i18n-ignore.txt. Reports a warning annotation plus a
-      # job summary entry instead of failing the run.
+      # listed in tests/i18n-ignore.txt. A missing translation fails the run:
+      # the report is also written to the job summary.
       - name: Check zh_Hans translation coverage
-        run: python3 tests/i18n-coverage.py --warn-below 100
+        run: python3 tests/i18n-coverage.py --fail-below 100
+
+      # The full suite (tests/run.sh) needs ucode + sing-box 1.14 + ubus and
+      # therefore runs on a target, not on the runner; see tests/README.md.
+      # These checks are the part that does not need a device.
+      - name: Syntax checks (shell / javascript)
+        run: |
+          set -e
+          for f in \
+            root/etc/init.d/homeproxy \
+            root/etc/homeproxy/scripts/*.sh \
+            tests/*.sh tests/ucode/*.sh \
+            .github/build-pkg.sh .github/update-geodata.sh; do
+            [ -f "$f" ] || continue
+            sh -n "$f"
+          done
+          for f in htdocs/luci-static/resources/homeproxy.js \
+            htdocs/luci-static/resources/view/homeproxy/*.js \
+            tests/luci-form-snapshot.js; do
+            [ -f "$f" ] || continue
+            node --check "$f"
+          done
+          echo "syntax checks passed"
