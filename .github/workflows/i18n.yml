@@ -33,13 +33,20 @@ jobs:
       - name: Syntax checks (shell / javascript)
         run: |
           set -e
+          # init.d and the runtime scripts are /bin/sh on the router and must
+          # stay POSIX, so they are checked with sh. build-pkg.sh declares
+          # #!/bin/bash and is invoked with bash by build.yml; checking it with
+          # sh (dash on the runner) rejects its own mapfile/process-substitution.
           for f in \
             root/etc/init.d/homeproxy \
             root/etc/homeproxy/scripts/*.sh \
-            tests/*.sh tests/ucode/*.sh \
-            .github/build-pkg.sh .github/update-geodata.sh; do
+            tests/*.sh tests/ucode/*.sh; do
             [ -f "$f" ] || continue
             sh -n "$f"
+          done
+          for f in .github/build-pkg.sh .github/update-geodata.sh; do
+            [ -f "$f" ] || continue
+            bash -n "$f"
           done
           for f in htdocs/luci-static/resources/homeproxy.js \
             htdocs/luci-static/resources/view/homeproxy/*.js \
